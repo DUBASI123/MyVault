@@ -22,13 +22,12 @@ async function testConnection(url) {
     }
   });
   try {
-    // Quick timeout query
     await prisma.$queryRaw`SELECT 1 as result`;
     await prisma.$disconnect();
-    return true;
+    return { ok: true };
   } catch (err) {
     await prisma.$disconnect();
-    return false;
+    return { ok: false, error: err.message };
   }
 }
 
@@ -45,11 +44,13 @@ async function main() {
     const url = `postgresql://${user}:${encodeURIComponent(password)}@${host}:6543/postgres?sslmode=require&connection_limit=1`;
     console.log(`Checking connection to: ${region} (${host})...`);
     
-    const ok = await testConnection(url);
-    if (ok) {
+    const res = await testConnection(url);
+    if (res.ok) {
       console.log(`\n🎉 FOUND WORKING REGION: ${region}`);
       workingUrl = url;
       break;
+    } else {
+      console.log(`  Failed: ${res.error.split('\n')[0]}`);
     }
   }
 
