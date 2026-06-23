@@ -32,7 +32,7 @@ async function testConnection(url) {
 }
 
 async function main() {
-  const password = process.env.DATABASE_PASS || "guhQi7P6pbY14azd";
+  const password = process.env.DATABASE_PASS || "jzqqWU5XbrckrIAD";
   const projectRef = "oawomrlsitttrbulxgyk";
   const user = `postgres.${projectRef}`;
 
