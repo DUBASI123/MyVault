@@ -1,0 +1,974 @@
+[
+    {
+        "id":  "c_1",
+        "universityId":  "1",
+        "name":  "A.M.R Institute of Technology",
+        "code":  "AIT",
+        "district":  "Adilabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_2",
+        "universityId":  "1",
+        "name":  "Abdul Kalam Institute of Technological Sciences",
+        "code":  "AKITS",
+        "district":  "Karimnagar",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_3",
+        "universityId":  "1",
+        "name":  "ACE Engineering College",
+        "code":  "AEC",
+        "district":  "Rangareddy",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_4",
+        "universityId":  "1",
+        "name":  "Adams Engineering College",
+        "code":  "AEC1",
+        "district":  "Khammam",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_5",
+        "universityId":  "1",
+        "name":  "Adusumalli Vijaya College of Engineering and Research Centre",
+        "code":  "AVCERC",
+        "district":  "Rangareddy",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_6",
+        "universityId":  "1",
+        "name":  "Adusumalli Vijaya Institute of Technology",
+        "code":  "AVIT",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_7",
+        "universityId":  "1",
+        "name":  "Aizza College of Engineering and Technology",
+        "code":  "ACET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_8",
+        "universityId":  "1",
+        "name":  "Al-Habeeb College of Engineering and Technology",
+        "code":  "ACET1",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_9",
+        "universityId":  "1",
+        "name":  "Amina Institute of Technology",
+        "code":  "AIT1",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_10",
+        "universityId":  "1",
+        "name":  "Anasuya Devi Institute of Technology and Sciences",
+        "code":  "ADITS",
+        "district":  "Rangareddy",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_11",
+        "universityId":  "1",
+        "name":  "Anjamma Agi Reddy Engineering College for Women",
+        "code":  "AARECW",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_12",
+        "universityId":  "1",
+        "name":  "Annamacharya Institute of Technology and Sciences",
+        "code":  "AITS",
+        "district":  "Rangareddy",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_13",
+        "universityId":  "1",
+        "name":  "Anu Bose Institute of Technology",
+        "code":  "ABIT",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_14",
+        "universityId":  "1",
+        "name":  "Anurag College of Engineering",
+        "code":  "ACE",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_15",
+        "universityId":  "1",
+        "name":  "Anurag Engineering College",
+        "code":  "AEC2",
+        "district":  "Nalgonda",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_16",
+        "universityId":  "1",
+        "name":  "Aurora Group of Institutions",
+        "code":  "AGI",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_17",
+        "universityId":  "1",
+        "name":  "Aurora Scientific Technological Institute",
+        "code":  "ASTI",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_18",
+        "universityId":  "1",
+        "name":  "Balaji Institute of Technology and Science",
+        "code":  "BITS",
+        "district":  "Nalgonda",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_19",
+        "universityId":  "1",
+        "name":  "Bharat Institute of Engineering and Technology",
+        "code":  "BIET",
+        "district":  "Rangareddy",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_20",
+        "universityId":  "1",
+        "name":  "Bhoj Reddy Engineering College for Women",
+        "code":  "BRECW",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_21",
+        "universityId":  "1",
+        "name":  "BVRIT Hyderabad College of Engineering for Women",
+        "code":  "BHCEW",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_22",
+        "universityId":  "1",
+        "name":  "BV Raju Institute of Technology",
+        "code":  "BRIT",
+        "district":  "Medak",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_23",
+        "universityId":  "1",
+        "name":  "CMR College of Engineering and Technology",
+        "code":  "CCET",
+        "district":  "Medchal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_24",
+        "universityId":  "1",
+        "name":  "CMR Engineering College",
+        "code":  "CEC",
+        "district":  "Medchal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_25",
+        "universityId":  "1",
+        "name":  "CVR College of Engineering",
+        "code":  "CCE",
+        "district":  "Rangareddy",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_26",
+        "universityId":  "1",
+        "name":  "Ellenki College of Engineering and Technology",
+        "code":  "ECET",
+        "district":  "Sangareddy",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_27",
+        "universityId":  "1",
+        "name":  "Geethanjali College of Engineering and Technology",
+        "code":  "GCET",
+        "district":  "Medchal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_28",
+        "universityId":  "1",
+        "name":  "Gokaraju Rangaraju Institute of Engineering and Technology",
+        "code":  "GRIET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_29",
+        "universityId":  "1",
+        "name":  "Guru Nanak Institutions Technical Campus",
+        "code":  "GNITC",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_30",
+        "universityId":  "1",
+        "name":  "Holy Mary Institute of Technology and Science",
+        "code":  "HMITS",
+        "district":  "Rangareddy",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_31",
+        "universityId":  "1",
+        "name":  "J.B. Institute of Engineering and Technology",
+        "code":  "JIET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_32",
+        "universityId":  "1",
+        "name":  "Joginpally B.R Engineering College",
+        "code":  "JBEC",
+        "district":  "Medchal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_33",
+        "universityId":  "1",
+        "name":  "Kakatiya Institute of Technology and Science",
+        "code":  "KITS",
+        "district":  "Warangal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_34",
+        "universityId":  "1",
+        "name":  "Keshav Memorial Institute of Technology",
+        "code":  "KMIT",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_35",
+        "universityId":  "1",
+        "name":  "Kommuri Pratap Reddy Institute of Technology",
+        "code":  "KPRIT",
+        "district":  "Medchal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_36",
+        "universityId":  "1",
+        "name":  "Mahatma Gandhi Institute of Technology",
+        "code":  "MGIT",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_37",
+        "universityId":  "1",
+        "name":  "Malla Reddy College of Engineering",
+        "code":  "MRCE",
+        "district":  "Medchal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_38",
+        "universityId":  "1",
+        "name":  "Malla Reddy Engineering College",
+        "code":  "MREC",
+        "district":  "Medchal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_39",
+        "universityId":  "1",
+        "name":  "Malla Reddy Institute of Technology",
+        "code":  "MRIT",
+        "district":  "Medchal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_40",
+        "universityId":  "1",
+        "name":  "Maturi Venkata Subba Rao Engineering College",
+        "code":  "MVSREC",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_41",
+        "universityId":  "1",
+        "name":  "MLR Institute of Technology",
+        "code":  "MIT",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_42",
+        "universityId":  "1",
+        "name":  "Nalla Malla Reddy Engineering College",
+        "code":  "NMREC",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_43",
+        "universityId":  "1",
+        "name":  "Narsimha Reddy Engineering College",
+        "code":  "NREC",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_44",
+        "universityId":  "1",
+        "name":  "Princeton Institute of Engineering and Technology",
+        "code":  "PIET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_45",
+        "universityId":  "1",
+        "name":  "Sreyas Institute of Engineering and Technology",
+        "code":  "SIET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_46",
+        "universityId":  "1",
+        "name":  "Sreenidhi Institute of Science and Technology",
+        "code":  "SIST",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_47",
+        "universityId":  "1",
+        "name":  "Sri Indu College of Engineering and Technology",
+        "code":  "SICET",
+        "district":  "Rangareddy",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_48",
+        "universityId":  "1",
+        "name":  "St Martins Engineering College",
+        "code":  "SMEC",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_49",
+        "universityId":  "1",
+        "name":  "TKR College of Engineering and Technology",
+        "code":  "TCET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_50",
+        "universityId":  "1",
+        "name":  "Vardhaman College of Engineering",
+        "code":  "VCE",
+        "district":  "Rangareddy",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_51",
+        "universityId":  "1",
+        "name":  "Vidya Jyothi Institute of Technology",
+        "code":  "VJIT",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_52",
+        "universityId":  "1",
+        "name":  "Vignan Institute of Technology and Science",
+        "code":  "VITS",
+        "district":  "Nalgonda",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_53",
+        "universityId":  "1",
+        "name":  "Vignana Bharathi Institute of Technology",
+        "code":  "VBIT",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_54",
+        "universityId":  "1",
+        "name":  "VNR Vignana Jyothi Institute of Engineering and Technology",
+        "code":  "VVJIET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_55",
+        "universityId":  "1",
+        "name":  "Vaageshwari College of Engineering",
+        "code":  "VCE1",
+        "district":  "Karimnagar",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_56",
+        "universityId":  "1",
+        "name":  "Vaagdevi Engineering College",
+        "code":  "VEC",
+        "district":  "Hanamkonda",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_57",
+        "universityId":  "2",
+        "name":  "Chaitanya Bharathi Institute of Technology",
+        "code":  "CBIT",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_58",
+        "universityId":  "2",
+        "name":  "University College of Engineering Osmania University",
+        "code":  "UCEOU",
+        "district":  "Hyderabad",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_59",
+        "universityId":  "2",
+        "name":  "Vasavi College of Engineering",
+        "code":  "VCE2",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_60",
+        "universityId":  "2",
+        "name":  "Muffakham Jah College of Engineering and Technology",
+        "code":  "MJCET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_61",
+        "universityId":  "2",
+        "name":  "Deccan College of Engineering and Technology",
+        "code":  "DCET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_62",
+        "universityId":  "2",
+        "name":  "ISL Engineering College",
+        "code":  "IEC",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_63",
+        "universityId":  "2",
+        "name":  "Lords Institute of Engineering and Technology",
+        "code":  "LIET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_64",
+        "universityId":  "2",
+        "name":  "Methodist College of Engineering and Technology",
+        "code":  "MCET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_65",
+        "universityId":  "2",
+        "name":  "Nawab Shah Alam Khan College of Engineering and Technology",
+        "code":  "NSAKCET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_66",
+        "universityId":  "2",
+        "name":  "Stanley College of Engineering and Technology for Women",
+        "code":  "SCETW",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_67",
+        "universityId":  "2",
+        "name":  "Anwar Ul Uloom College of Engineering and Technology",
+        "code":  "AUUCET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_68",
+        "universityId":  "2",
+        "name":  "Mahaveer Institute of Science and Technology",
+        "code":  "MIST",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_69",
+        "universityId":  "2",
+        "name":  "Matrusri Engineering College",
+        "code":  "MEC",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_70",
+        "universityId":  "2",
+        "name":  "Shadan College of Engineering and Technology",
+        "code":  "SCET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_71",
+        "universityId":  "2",
+        "name":  "Islamia College of Engineering and Technology",
+        "code":  "ICET",
+        "district":  "Hyderabad",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_72",
+        "universityId":  "2",
+        "name":  "Khaja Banda Nawaz College of Engineering",
+        "code":  "KBNCE",
+        "district":  "Kalaburagi",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_73",
+        "universityId":  "3",
+        "name":  "KITS Warangal",
+        "code":  "KW",
+        "district":  "Warangal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_74",
+        "universityId":  "3",
+        "name":  "KU College of Engineering and Technology",
+        "code":  "KCET",
+        "district":  "Warangal",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_75",
+        "universityId":  "3",
+        "name":  "KU College of Engineering Kothagudem",
+        "code":  "KCEK",
+        "district":  "Bhadradri Kothagudem",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_76",
+        "universityId":  "3",
+        "name":  "Vaagdevi Engineering College",
+        "code":  "VEC1",
+        "district":  "Hanamkonda",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_77",
+        "universityId":  "3",
+        "name":  "SR Engineering College",
+        "code":  "SEC",
+        "district":  "Warangal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_78",
+        "universityId":  "3",
+        "name":  "Christu Jyothi Institute of Technology and Science",
+        "code":  "CJITS",
+        "district":  "Warangal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_79",
+        "universityId":  "3",
+        "name":  "Warangal Institute of Technology and Science",
+        "code":  "WITS",
+        "district":  "Hanamkonda",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_80",
+        "universityId":  "3",
+        "name":  "Jayamukhi Institute of Technological Sciences",
+        "code":  "JITS",
+        "district":  "Warangal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_81",
+        "universityId":  "3",
+        "name":  "Ganapathy Engineering College",
+        "code":  "GEC",
+        "district":  "Warangal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_82",
+        "universityId":  "3",
+        "name":  "Mother Teresa Institute of Science and Technology",
+        "code":  "MTIST",
+        "district":  "Khammam",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_83",
+        "universityId":  "3",
+        "name":  "Aurum Institute of Technology",
+        "code":  "AIT2",
+        "district":  "Warangal",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_84",
+        "universityId":  "3",
+        "name":  "Vaageshwari Engineering College",
+        "code":  "VEC2",
+        "district":  "Karimnagar",
+        "type":  "Private",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_85",
+        "universityId":  "4",
+        "name":  "RGUKT Basar",
+        "code":  "RB",
+        "district":  "Nirmal",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_86",
+        "universityId":  "4",
+        "name":  "RGUKT Nuzvid",
+        "code":  "RN",
+        "district":  "Krishna",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_87",
+        "universityId":  "4",
+        "name":  "RGUKT RK Valley",
+        "code":  "RRV",
+        "district":  "Kadapa",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_88",
+        "universityId":  "5",
+        "name":  "JNTUH College of Engineering Hyderabad",
+        "code":  "JCEH",
+        "district":  "Hyderabad",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_89",
+        "universityId":  "5",
+        "name":  "JNTUH College of Engineering Sultanpur",
+        "code":  "JCES",
+        "district":  "Medak",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_90",
+        "universityId":  "5",
+        "name":  "JNTUH College of Engineering Jagtial",
+        "code":  "JCEJ",
+        "district":  "Jagitial",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_91",
+        "universityId":  "5",
+        "name":  "JNTUH College of Engineering Manthani",
+        "code":  "JCEM",
+        "district":  "Peddapalli",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_92",
+        "universityId":  "5",
+        "name":  "JNTUH College of Engineering Rajanna Sircilla",
+        "code":  "JCERS",
+        "district":  "Rajanna Sircilla",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_93",
+        "universityId":  "5",
+        "name":  "JNTUH College of Engineering Wanaparthy",
+        "code":  "JCEW",
+        "district":  "Wanaparthy",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_94",
+        "universityId":  "5",
+        "name":  "JNTUH College of Engineering Mahabubabad",
+        "code":  "JCEM1",
+        "district":  "Mahabubabad",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_95",
+        "universityId":  "5",
+        "name":  "JNTUH College of Engineering Palair",
+        "code":  "JCEP",
+        "district":  "Khammam",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_96",
+        "universityId":  "5",
+        "name":  "Osmania University College of Engineering",
+        "code":  "OUCE",
+        "district":  "Hyderabad",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_97",
+        "universityId":  "5",
+        "name":  "Osmania University College of Technology",
+        "code":  "OUCT",
+        "district":  "Hyderabad",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_98",
+        "universityId":  "5",
+        "name":  "KU College of Engineering and Technology",
+        "code":  "KCET1",
+        "district":  "Warangal",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_99",
+        "universityId":  "5",
+        "name":  "Government Engineering College Kosgi",
+        "code":  "GECK",
+        "district":  "Mahabubnagar",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_100",
+        "universityId":  "5",
+        "name":  "MGU College of Engineering and Technology",
+        "code":  "MCET1",
+        "district":  "Nalgonda",
+        "type":  "Government",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_101",
+        "universityId":  "6",
+        "name":  "Indian Institute of Technology Hyderabad",
+        "code":  "IITH",
+        "district":  "Sangareddy",
+        "type":  "National Institute",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_102",
+        "universityId":  "6",
+        "name":  "National Institute of Technology Warangal",
+        "code":  "NITW",
+        "district":  "Warangal",
+        "type":  "National Institute",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_103",
+        "universityId":  "6",
+        "name":  "International Institute of Information Technology Hyderabad",
+        "code":  "IIITH",
+        "district":  "Hyderabad",
+        "type":  "Deemed University",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_104",
+        "universityId":  "6",
+        "name":  "BITS Pilani Hyderabad Campus",
+        "code":  "BPHC",
+        "district":  "Hyderabad",
+        "type":  "Deemed University",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_105",
+        "universityId":  "6",
+        "name":  "Mahindra University",
+        "code":  "MU",
+        "district":  "Hyderabad",
+        "type":  "Deemed University",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_106",
+        "universityId":  "6",
+        "name":  "Woxsen University",
+        "code":  "WU",
+        "district":  "Sangareddy",
+        "type":  "Deemed University",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_107",
+        "universityId":  "6",
+        "name":  "Anurag University",
+        "code":  "AU",
+        "district":  "Hyderabad",
+        "type":  "Deemed University",
+        "state":  "Telangana"
+    },
+    {
+        "id":  "c_108",
+        "universityId":  "6",
+        "name":  "ICFAI Tech School",
+        "code":  "ITS",
+        "district":  "Hyderabad",
+        "type":  "Deemed University",
+        "state":  "Telangana"
+    }
+]

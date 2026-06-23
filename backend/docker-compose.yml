@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: myvault-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: myvault_db
+    volumes:
+      - myvault_pg_data:/var/lib/postgresql/data
+
+volumes:
+  myvault_pg_data:

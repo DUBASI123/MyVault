@@ -1,0 +1,67 @@
+name: myvault_app
+description: MyVault - Student Academic Platform
+version: 1.0.0+1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Backend
+  supabase_flutter: ^2.5.0
+
+  # State Management
+  flutter_riverpod: ^2.5.1
+
+  # Navigation
+  go_router: ^13.2.0
+
+  # UI & Animations
+  lottie: ^3.1.0
+  flutter_animate: ^4.5.0
+  shimmer: ^3.0.0
+  cached_network_image: ^3.3.1
+  flutter_svg: ^2.0.10
+
+  # Forms & Inputs
+  pinput: ^3.0.1
+  dropdown_search: ^5.0.6
+
+  # File & Media
+  image_picker: ^1.0.7
+  file_picker: ^8.0.0
+  dio: ^5.4.1
+
+  # Utils
+  url_launcher: ^6.2.6
+  flutter_secure_storage: ^9.2.0
+  intl: ^0.19.0
+  shared_preferences: ^2.2.3
+
+  # Icons
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/animations/
+    - assets/icons/
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700

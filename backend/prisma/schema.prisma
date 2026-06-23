@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model University {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  state     String?
+  colleges  College[]
+  students  Student[]
+  createdAt DateTime @default(now()) @map("created_at")
+}
+
+model College {
+  id           String     @id @default(uuid())
+  universityId String     @map("university_id")
+  university   University @relation(fields: [universityId], references: [id])
+  name         String
+  code         String     @unique
+  logoUrl      String?    @map("logo_url")
+  district     String?
+  type         String?
+  state        String?
+  students     Student[]
+  createdAt    DateTime   @default(now()) @map("created_at")
+}
+
+model Student {
+  id               String    @id @default(uuid())
+  firstName        String    @map("first_name")
+  lastName         String    @map("last_name")
+  fullNameAadhar   String    @map("full_name_aadhar")
+  mobile           String    @unique
+  email            String    @unique
+  passwordHash     String    @map("password_hash")
+  hallTicket       String    @unique @map("hall_ticket")
+  universityId     String?   @map("university_id")
+  university       University? @relation(fields: [universityId], references: [id])
+  collegeId        String?   @map("college_id")
+  college          College?  @relation(fields: [collegeId], references: [id])
+  course           String
+  branch           String
+  semester         Int       @default(1)
+  yearOfStudy      Int       @default(1) @map("year_of_study")
+  passingYear      Int?      @map("passing_year")
+  gender           String?
+  state            String?
+  profilePicUrl    String?   @map("profile_pic_url")
+  role             String    @default("student")
+  isMobileVerified Boolean   @default(false) @map("is_mobile_verified")
+  isEmailVerified  Boolean   @default(false) @map("is_email_verified")
+  status           String    @default("APPROVED")
+  rewardPoints     Int       @default(0) @map("reward_points")
+  createdAt        DateTime  @default(now()) @map("created_at")
+}
+
+model Subject {
+  id        String   @id @default(uuid())
+  name      String
+  code      String?
+  branch    String
+  semester  Int
+  contents  AcademicContent[]
+  createdAt DateTime @default(now()) @map("created_at")
+}
+
+model AcademicContent {
+  id          String   @id @default(uuid())
+  subjectId   String   @map("subject_id")
+  subject     Subject  @relation(fields: [subjectId], references: [id])
+  title       String
+  contentType String   @map("content_type")
+  description String?
+  unitNumber  Int?     @map("unit_number")
+  fileUrl     String?  @map("file_url")
+  storagePath String?  @map("storage_path")
+  uploadedBy  String?  @map("uploaded_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+}
+
+model OtpToken {
+  id        String   @id @default(uuid())
+  target    String
+  code      String
+  purpose   String
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  body      String
+  type      String   @default("general")
+  link      String?
+  createdAt DateTime @default(now()) @map("created_at")
+}
+
+model ExamResult {
+  id       String  @id @default(uuid())
+  subject  String
+  code     String?
+  internal Int     @default(0)
+  external Int     @default(0)
+  total    Int     @default(0)
+  maxMarks Int     @default(100) @map("max_marks")
+  grade    String?
+  status   String  @default("Pass")
+  semester Int     @default(1)
+  branch   String  @default("CSE")
+  createdAt DateTime @default(now()) @map("created_at")
+}
+
+model Internship {
+  id        String   @id @default(uuid())
+  company   String
+  role      String
+  type      String
+  domain    String?
+  stipend   String?
+  duration  String?
+  deadline  String?
+  applyLink String?  @map("apply_link")
+  logo      String?
+  status    String   @default("Open")
+  createdAt DateTime @default(now()) @map("created_at")
+}
+
+model Announcement {
+  id          String   @id @default(uuid())
+  title       String
+  body        String
+  category    String   @default("general")
+  collegeId   String?  @map("college_id")
+  branch      String?
+  semester    Int?
+  publishedBy String   @map("published_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+}
+
