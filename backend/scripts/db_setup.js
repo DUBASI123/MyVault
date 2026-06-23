@@ -50,7 +50,7 @@ async function main() {
       workingUrl = url;
       break;
     } else {
-      console.log(`  Failed: ${res.error.split('\n')[0]}`);
+      console.log(`  Failed: ${res.error.replace(/\r?\n/g, ' ')}`);
     }
   }
 
