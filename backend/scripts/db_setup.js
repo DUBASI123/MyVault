@@ -40,18 +40,22 @@ async function main() {
   let workingUrl = null;
 
   for (const region of regions) {
-    const host = `aws-0-${region}.pooler.supabase.com`;
-    const url = `postgresql://${user}:${encodeURIComponent(password)}@${host}:6543/postgres?sslmode=require&connection_limit=1`;
-    console.log(`Checking connection to: ${region} (${host})...`);
-    
-    const res = await testConnection(url);
-    if (res.ok) {
-      console.log(`\n🎉 FOUND WORKING REGION: ${region}`);
-      workingUrl = url;
-      break;
-    } else {
-      console.log(`  Failed: ${res.error.replace(/\r?\n/g, ' ')}`);
+    for (const prefix of ['aws-0', 'aws-1']) {
+      const host = `${prefix}-${region}.pooler.supabase.com`;
+      const url = `postgresql://${user}:${encodeURIComponent(password)}@${host}:6543/postgres?sslmode=require&connection_limit=1`;
+      console.log(`Checking connection to: ${region} (${host})...`);
+      
+      const res = await testConnection(url);
+      if (res.ok) {
+        console.log(`\n🎉 FOUND WORKING REGION: ${region} (${prefix})`);
+        workingUrl = url;
+        break;
+      } else {
+        // Log brief error for clarity
+        console.log(`  Failed: ${res.error.replace(/\r?\n/g, ' ').slice(0, 120)}...`);
+      }
     }
+    if (workingUrl) break;
   }
 
   if (!workingUrl) {
