@@ -2,12 +2,12 @@
 class EnvConfig {
   static const supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://facqwktjfalukazexjye.supabase.co',
+    defaultValue: 'https://oawomrlsitttrbulxgyk.supabase.co',
   );
 
   static const supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhY3F3a3RqZmFsdWthemV4anllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNDk2MzMsImV4cCI6MjA5NjgyNTYzM30.GYrTZn_QiN7oDTV3EWLMmP3-K_JAvg8llPJQz4YUEa0',
+    defaultValue: 'sb_publishable_befhrJ7LkoXBwspVjBX66A_9jZmPT8a',
   );
 
   static const cloudinaryCloudName = String.fromEnvironment(

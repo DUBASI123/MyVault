@@ -33,7 +33,7 @@ async function testConnection(url) {
 
 async function main() {
   const password = process.env.DATABASE_PASS || "guhQi7P6pbY14azd";
-  const projectRef = "facqwktjfalukazexjye";
+  const projectRef = "oawomrlsitttrbulxgyk";
   const user = `postgres.${projectRef}`;
 
   console.log('--- Supabase Region Connection Auto-Discovery ---');
