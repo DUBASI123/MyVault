@@ -26,6 +26,14 @@ app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', service: 'my-vault-api' });
 });
 
+app.get('/', (_, res) => {
+  res.json({
+    status: 'ok',
+    message: 'MyVault REST API is running successfully.',
+    downloadUrl: 'https://myvault-jbd7.onrender.com/download-apk'
+  });
+});
+
 app.get('/download-apk', (_, res) => {
   const apkPath = path.resolve('public/MyVault-release.apk');
   res.download(apkPath, 'MyVault-release.apk');
