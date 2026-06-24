@@ -8,7 +8,7 @@ if (process.env.DATABASE_URL) {
 
 try {
   console.log('\nRunning: npx prisma db push...');
-  const pushOut = execSync('npx prisma db push', { encoding: 'utf8' });
+  const pushOut = execSync('npx prisma db push --accept-data-loss', { encoding: 'utf8' });
   console.log(pushOut);
 } catch (err) {
   console.error('\n❌ ERROR RUNNING PRISMA DB PUSH:');
