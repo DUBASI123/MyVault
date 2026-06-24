@@ -139,6 +139,11 @@ class AuthRepository {
           '👉 IMPORTANT: Please turn off "Confirm email" in your Supabase Dashboard '
           '(Authentication -> Providers -> Email -> Turn off "Confirm email") to allow instant registrations.'
         );
+      } else if (msg.contains('already registered') || msg.contains('user_already_exists')) {
+        throw Exception(
+          'This email is already registered.\n\n'
+          '👉 FIX: If your previous registration failed halfway, please go to your Supabase Dashboard -> Authentication -> Users, delete this user record, and register again.'
+        );
       } else {
         throw Exception('Registration failed: ${e.message}');
       }
