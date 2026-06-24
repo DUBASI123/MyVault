@@ -21,13 +21,13 @@ class SocketClient {
   void connect() {
     if (_channel != null) return;
 
-    debugPrint('🔌 Connecting to Supabase Realtime for academic resources changes');
+    debugPrint('🔌 Connecting to Supabase Realtime for academic contents changes');
 
-    _channel = SupabaseService.client.channel('public:academic_resources');
+    _channel = SupabaseService.client.channel('public:academic_contents');
     _channel!.onPostgresChanges(
       event: PostgresChangeEvent.all,
       schema: 'public',
-      table: 'academic_resources',
+      table: 'academic_contents',
       callback: (payload) {
         debugPrint('🔔 Real-time database update received: ${payload.toString()}');
         final record = payload.newRecord.isNotEmpty ? payload.newRecord : payload.oldRecord;

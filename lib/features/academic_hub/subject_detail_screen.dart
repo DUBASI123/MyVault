@@ -32,7 +32,7 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
           .maybeSingle();
 
       final res = await Supabase.instance.client
-          .from('academic_resources')
+          .from('academic_contents')
           .select()
           .eq('subject_id', widget.subjectId)
           .order('unit_number');
