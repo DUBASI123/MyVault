@@ -17,7 +17,7 @@ class EnvConfig {
 
   static const apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.92.219.23:5000/api',
+    defaultValue: 'https://myvault-jbd7.onrender.com/api',
   );
 
   /// Treat emulator/local backend as live when true.
