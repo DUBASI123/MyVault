@@ -4,6 +4,8 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 
+import path from 'path';
+
 import authRoutes from './routes/auth.routes.js';
 import masterRoutes from './routes/master.routes.js';
 import academicRoutes from './routes/academic.routes.js';
@@ -25,7 +27,8 @@ app.get('/api/health', (_, res) => {
 });
 
 app.get('/download-apk', (_, res) => {
-  res.download('C:\\Users\\dubas\\Desktop\\MyVault-release.apk', 'MyVault-release.apk');
+  const apkPath = path.resolve('public/MyVault-release.apk');
+  res.download(apkPath, 'MyVault-release.apk');
 });
 
 app.get('/api/health/live', async (_req, res, next) => {
