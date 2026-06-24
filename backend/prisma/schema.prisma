@@ -42,7 +42,7 @@ model Student {
   fullNameAadhar   String    @map("full_name_aadhar")
   mobile           String    @unique
   email            String    @unique
-  passwordHash     String    @map("password_hash")
+  passwordHash     String?   @map("password_hash")
   hallTicket       String    @unique @map("hall_ticket")
   universityId     String?   @map("university_id")
   university       University? @relation(fields: [universityId], references: [id])
