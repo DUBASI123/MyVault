@@ -98,38 +98,51 @@ class AuthRepository {
 
   // ── Register ───────────────────────────────────────────────────────────────
   Future<StudentModel> register(StudentModel student, String password) async {
-    // 1. Create Supabase Auth user — emailRedirectTo: '' disables email
-    //    confirmation requirement so users can log in immediately.
-    final response = await SupabaseService.signUp(
-      email: student.email,
-      password: password,
-    );
-    final user = response.user;
-    if (user == null) throw Exception('Account creation failed. Please try again.');
+    try {
+      // 1. Create Supabase Auth user — emailRedirectTo: '' disables email
+      //    confirmation requirement so users can log in immediately.
+      final response = await SupabaseService.signUp(
+        email: student.email,
+        password: password,
+      );
+      final user = response.user;
+      if (user == null) throw Exception('Account creation failed. Please try again.');
 
-    // 2. Insert student profile
-    await _db.from('students').insert({
-      'id': user.id,
-      'first_name': student.firstName,
-      'last_name': student.lastName,
-      'full_name_aadhar': student.fullNameAadhar,
-      'mobile': student.mobile,
-      'email': student.email,
-      'hall_ticket': student.hallTicket,
-      'university_id': student.universityId,
-      'college_id': student.collegeId,
-      'course': student.course,
-      'branch': student.branch,
-      'semester': student.semester,
-      'year_of_study': student.yearOfStudy,
-      'passing_year': student.passingYear,
-      'gender': student.gender,
-      'state': student.state,
-      'is_mobile_verified': student.isMobileVerified,
-      'is_email_verified': student.isEmailVerified,
-    });
+      // 2. Insert student profile
+      await _db.from('students').insert({
+        'id': user.id,
+        'first_name': student.firstName,
+        'last_name': student.lastName,
+        'full_name_aadhar': student.fullNameAadhar,
+        'mobile': student.mobile,
+        'email': student.email,
+        'hall_ticket': student.hallTicket,
+        'university_id': student.universityId,
+        'college_id': student.collegeId,
+        'course': student.course,
+        'branch': student.branch,
+        'semester': student.semester,
+        'year_of_study': student.yearOfStudy,
+        'passing_year': student.passingYear,
+        'gender': student.gender,
+        'state': student.state,
+        'is_mobile_verified': student.isMobileVerified,
+        'is_email_verified': student.isEmailVerified,
+      });
 
-    return student.copyWith(id: user.id);
+      return student.copyWith(id: user.id);
+    } on AuthException catch (e) {
+      final msg = e.message.toLowerCase();
+      if (msg.contains('rate limit') || msg.contains('over_email_send_rate_limit') || msg.contains('security purposes')) {
+        throw Exception(
+          'Email rate limit exceeded.\n\n'
+          '👉 IMPORTANT: Please turn off "Confirm email" in your Supabase Dashboard '
+          '(Authentication -> Providers -> Email -> Turn off "Confirm email") to allow instant registrations.'
+        );
+      } else {
+        throw Exception('Registration failed: ${e.message}');
+      }
+    }
   }
 
   // ── OTP helpers ───────────────────────────────────────────────────────────
