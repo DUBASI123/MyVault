@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/mock/mock_data.dart';
 import '../../../core/router/app_router.dart';
@@ -12,6 +14,7 @@ import '../../../shared/models/student_model.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import '../../../shared/widgets/otp_verification_badge.dart';
+import '../../../core/services/cloudinary_service.dart';
 import '../data/auth_repository.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -52,6 +55,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _year;
   String? _gender;
   String? _state;
+
+  String? _studentIdPath;
+  String? _profilePhotoPath;
 
   @override
   void initState() {
@@ -153,13 +159,175 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _currentPage = page);
   }
 
+  Future<void> _sendMobileOtp() async {
+    final phone = _mobile.text.trim();
+    if (phone.isEmpty) {
+      _snack('Please enter your mobile number', error: true);
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final res = await ref.read(authRepositoryProvider).sendOtp(
+        OtpService.normalizePhone(phone),
+        purpose: 'register',
+      );
+      setState(() {
+        _mobileStatus = OtpBadgeStatus.sent;
+      });
+      _snack('OTP sent to $phone');
+      if (res.otpPreview != null) {
+        _snack('Dev preview OTP: ${res.otpPreview}', error: false);
+      }
+    } catch (e) {
+      _snack(e.toString(), error: true);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _verifyMobileOtp() async {
+    final phone = _mobile.text.trim();
+    final otp = _mobileOtp.text.trim();
+    if (otp.isEmpty) {
+      _snack('Please enter the mobile OTP', error: true);
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final verified = await ref.read(authRepositoryProvider).verifyOtp(
+        OtpService.normalizePhone(phone),
+        otp,
+        purpose: 'register',
+      );
+      if (verified) {
+        setState(() {
+          _mobileStatus = OtpBadgeStatus.verified;
+        });
+        _snack('Mobile number verified successfully!');
+      } else {
+        setState(() {
+          _mobileStatus = OtpBadgeStatus.failed;
+        });
+        _snack('Incorrect mobile OTP code', error: true);
+      }
+    } catch (e) {
+      _snack(e.toString(), error: true);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _sendEmailOtp() async {
+    final email = _email.text.trim();
+    if (email.isEmpty) {
+      _snack('Please enter your email address', error: true);
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final res = await ref.read(authRepositoryProvider).sendOtp(
+        email,
+        purpose: 'register',
+      );
+      setState(() {
+        _emailStatus = OtpBadgeStatus.sent;
+      });
+      _snack('OTP sent to $email');
+      if (res.otpPreview != null) {
+        _snack('Dev preview OTP: ${res.otpPreview}', error: false);
+      }
+    } catch (e) {
+      _snack(e.toString(), error: true);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _verifyEmailOtp() async {
+    final email = _email.text.trim();
+    final otp = _emailOtp.text.trim();
+    if (otp.isEmpty) {
+      _snack('Please enter the email OTP', error: true);
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final verified = await ref.read(authRepositoryProvider).verifyOtp(
+        email,
+        otp,
+        purpose: 'register',
+      );
+      if (verified) {
+        setState(() {
+          _emailStatus = OtpBadgeStatus.verified;
+        });
+        _snack('Email address verified successfully!');
+      } else {
+        setState(() {
+          _emailStatus = OtpBadgeStatus.failed;
+        });
+        _snack('Incorrect email OTP code', error: true);
+      }
+    } catch (e) {
+      _snack(e.toString(), error: true);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickStudentId() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+    );
+    if (result != null && result.files.single.path != null) {
+      setState(() {
+        _studentIdPath = result.files.single.path;
+      });
+    }
+  }
+
+  Future<void> _pickProfilePhoto() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+    );
+    if (result != null && result.files.single.path != null) {
+      setState(() {
+        _profilePhotoPath = result.files.single.path;
+      });
+    }
+  }
+
   Future<void> _register() async {
     if (_password.text != _confirmPassword.text) {
       _snack('Passwords do not match', error: true);
       return;
     }
+    if (_mobileStatus != OtpBadgeStatus.verified) {
+      _snack('Please verify your mobile number first', error: true);
+      return;
+    }
+    if (_emailStatus != OtpBadgeStatus.verified) {
+      _snack('Please verify your email address first', error: true);
+      return;
+    }
+    if (_studentIdPath == null) {
+      _snack('Please upload your Student ID Card', error: true);
+      return;
+    }
+    if (_profilePhotoPath == null) {
+      _snack('Please upload your Profile Photo', error: true);
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
+      final idCardUrl = await CloudinaryService.uploadFile(File(_studentIdPath!));
+      if (idCardUrl == null) throw Exception('Failed to upload Student ID Card.');
+
+      final profilePicUrl = await CloudinaryService.uploadFile(File(_profilePhotoPath!));
+      if (profilePicUrl == null) throw Exception('Failed to upload Profile Photo.');
+
       final student = StudentModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         firstName: _firstName.text.trim(),
@@ -180,6 +348,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         state: _state ?? '',
         isMobileVerified: true,
         isEmailVerified: true,
+        profilePicUrl: profilePicUrl,
+        idCardUrl: idCardUrl,
+        status: 'PENDING',
         createdAt: DateTime.now(),
       );
       await ref.read(authRepositoryProvider).register(student, _password.text);
@@ -188,10 +359,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
-            title: const Text('Registration Successful'),
+            title: const Text('Registration Submitted'),
             content: const Text(
-              'Your account has been created successfully.\n\n'
-              'You can now log in immediately using your credentials.',
+              'Your registration has been submitted successfully.\n\n'
+              'Your account is awaiting college administrator approval. '
+              'You will receive access after verification is complete.',
             ),
             actions: [
               TextButton(
@@ -230,14 +402,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: Center(child: Text('Step ${_currentPage + 1}/3')),
+            child: Center(child: Text('Step ${_currentPage + 1}/4')),
           ),
         ],
       ),
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
-        children: [_page1(), _page2(), _page3()],
+        children: [_page1(), _page2(), _page3(), _page4()],
       ),
     );
   }
@@ -284,6 +456,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           CustomButton(
             text: 'Next: Academic Info',
             onPressed: () {
+              if (_firstName.text.trim().isEmpty || _lastName.text.trim().isEmpty || _aadharName.text.trim().isEmpty) {
+                _snack('Please fill in First Name, Last Name and Aadhaar Name', error: true);
+                return;
+              }
               if (_mobile.text.trim().isEmpty || _email.text.trim().isEmpty) {
                 _snack('Please fill in Mobile and Email', error: true);
                 return;
@@ -327,7 +503,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           const SizedBox(height: 12),
           _dropdown('State', _state, ['Telangana', 'Andhra Pradesh', 'Karnataka'], (v) => setState(() => _state = v)),
           const SizedBox(height: 24),
-          CustomButton(text: 'Next: Security', onPressed: () => _goToPage(2)),
+          CustomButton(
+            text: 'Next: Security & OTP',
+            onPressed: () {
+              if (_hallTicket.text.trim().isEmpty) {
+                _snack('Please fill in your Hall Ticket', error: true);
+                return;
+              }
+              if (_course == null || _branch == null || _year == null || _semester == null) {
+                _snack('Please fill in all academic details', error: true);
+                return;
+              }
+              _goToPage(2);
+            },
+          ),
         ],
       ),
     );
@@ -337,12 +526,233 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CustomTextField(label: 'Password', controller: _password, isPassword: true, isRequired: true),
           const SizedBox(height: 12),
           CustomTextField(label: 'Confirm Password', controller: _confirmPassword, isPassword: true, isRequired: true),
           const SizedBox(height: 24),
-          CustomButton(text: 'Create Account', onPressed: _register, isLoading: _isLoading, icon: Icons.person_add),
+          const Divider(),
+          const SizedBox(height: 12),
+          const Text('OTP Verification', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Mobile: ${_mobile.text}', style: const TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        OtpVerificationBadge(status: _mobileStatus),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (_mobileStatus == OtpBadgeStatus.pending || _mobileStatus == OtpBadgeStatus.failed)
+                ElevatedButton(
+                  onPressed: _sendMobileOtp,
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                  child: const Text('Send OTP'),
+                ),
+            ],
+          ),
+          if (_mobileStatus == OtpBadgeStatus.sent || _mobileStatus == OtpBadgeStatus.failed) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: CustomTextField(
+                    label: 'Enter Mobile OTP',
+                    controller: _mobileOtp,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: _verifyMobileOtp,
+                  child: const Text('Verify'),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Email: ${_email.text}', style: const TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        OtpVerificationBadge(status: _emailStatus),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (_emailStatus == OtpBadgeStatus.pending || _emailStatus == OtpBadgeStatus.failed)
+                ElevatedButton(
+                  onPressed: _sendEmailOtp,
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                  child: const Text('Send OTP'),
+                ),
+            ],
+          ),
+          if (_emailStatus == OtpBadgeStatus.sent || _emailStatus == OtpBadgeStatus.failed) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: CustomTextField(
+                    label: 'Enter Email OTP',
+                    controller: _emailOtp,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: _verifyEmailOtp,
+                  child: const Text('Verify'),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 32),
+          CustomButton(
+            text: 'Next: Upload Documents',
+            onPressed: () {
+              if (_password.text.isEmpty || _confirmPassword.text.isEmpty) {
+                _snack('Please enter password and confirm it', error: true);
+                return;
+              }
+              if (_password.text != _confirmPassword.text) {
+                _snack('Passwords do not match', error: true);
+                return;
+              }
+              if (_mobileStatus != OtpBadgeStatus.verified) {
+                _snack('Please verify your mobile number first', error: true);
+                return;
+              }
+              if (_emailStatus != OtpBadgeStatus.verified) {
+                _snack('Please verify your email address first', error: true);
+                return;
+              }
+              _goToPage(3);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _page4() {
+    final studentIdName = _studentIdPath != null ? _studentIdPath!.split(Platform.pathSeparator).last : 'No file selected';
+    final profilePhotoName = _profilePhotoPath != null ? _profilePhotoPath!.split(Platform.pathSeparator).last : 'No file selected';
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Identity Verification',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Please upload your identity documents to submit your account for administrator approval.',
+            style: TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          const SizedBox(height: 24),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.grey.shade300),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.badge_outlined, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Student ID Card',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    studentIdName,
+                    style: TextStyle(color: _studentIdPath != null ? Colors.black87 : Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _pickStudentId,
+                    icon: const Icon(Icons.upload_file),
+                    label: const Text('Choose ID Card'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.grey.shade300),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.account_box_outlined, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Profile Photo',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    profilePhotoName,
+                    style: TextStyle(color: _profilePhotoPath != null ? Colors.black87 : Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _pickProfilePhoto,
+                    icon: const Icon(Icons.add_a_photo_outlined),
+                    label: const Text('Choose Photo'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+          CustomButton(
+            text: 'Submit Registration',
+            onPressed: _register,
+            isLoading: _isLoading,
+            icon: Icons.done_all,
+          ),
         ],
       ),
     );

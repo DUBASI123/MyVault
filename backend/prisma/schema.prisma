@@ -56,10 +56,11 @@ model Student {
   gender           String?
   state            String?
   profilePicUrl    String?   @map("profile_pic_url")
+  idCardUrl        String?   @map("id_card_url")
   role             String    @default("student")
   isMobileVerified Boolean   @default(false) @map("is_mobile_verified")
   isEmailVerified  Boolean   @default(false) @map("is_email_verified")
-  status           String    @default("APPROVED")
+  status           String    @default("PENDING")
   rewardPoints     Int       @default(0) @map("reward_points")
   createdAt        DateTime  @default(now()) @map("created_at")
   certificates     Certificate[]

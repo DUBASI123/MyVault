@@ -19,6 +19,8 @@ class StudentModel {
   final String gender;
   final String state;
   final String? profilePicUrl;
+  final String? idCardUrl;
+  final String status;
   final bool isMobileVerified;
   final bool isEmailVerified;
   final DateTime createdAt;
@@ -44,6 +46,8 @@ class StudentModel {
     required this.gender,
     required this.state,
     this.profilePicUrl,
+    this.idCardUrl,
+    this.status = 'PENDING',
     required this.isMobileVerified,
     required this.isEmailVerified,
     required this.createdAt,
@@ -77,6 +81,8 @@ class StudentModel {
       gender: json['gender'] ?? '',
       state: json['state'] ?? '',
       profilePicUrl: json['profile_pic_url'] ?? json['profilePicUrl'],
+      idCardUrl: json['id_card_url'] ?? json['idCardUrl'],
+      status: json['status'] ?? 'PENDING',
       isMobileVerified: json['is_mobile_verified'] ?? false,
       isEmailVerified: json['is_email_verified'] ?? false,
       createdAt: json['created_at'] != null
@@ -106,6 +112,8 @@ class StudentModel {
         'gender': gender,
         'state': state,
         'profile_pic_url': profilePicUrl,
+        'id_card_url': idCardUrl,
+        'status': status,
         'is_mobile_verified': isMobileVerified,
         'is_email_verified': isEmailVerified,
       };
@@ -131,6 +139,8 @@ class StudentModel {
     String? gender,
     String? state,
     String? profilePicUrl,
+    String? idCardUrl,
+    String? status,
     bool? isMobileVerified,
     bool? isEmailVerified,
     DateTime? createdAt,
@@ -156,6 +166,8 @@ class StudentModel {
       gender: gender ?? this.gender,
       state: state ?? this.state,
       profilePicUrl: profilePicUrl ?? this.profilePicUrl,
+      idCardUrl: idCardUrl ?? this.idCardUrl,
+      status: status ?? this.status,
       isMobileVerified: isMobileVerified ?? this.isMobileVerified,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       createdAt: createdAt ?? this.createdAt,

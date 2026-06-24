@@ -80,6 +80,12 @@ class AuthRepository {
       await _ref.read(currentStudentProvider.notifier).load();
       final student = _ref.read(currentStudentProvider);
       if (student == null) throw Exception('Student profile not found. Please contact support.');
+      if (student.status != 'APPROVED') {
+        throw Exception(
+          'Your account is pending college verification.\n\n'
+          'You will be able to access MyVault after approval by your college administrator.'
+        );
+      }
       return student;
     } on AuthException catch (e) {
       // Map raw Supabase auth errors to user-friendly messages
@@ -128,6 +134,9 @@ class AuthRepository {
         'state': student.state,
         'is_mobile_verified': student.isMobileVerified,
         'is_email_verified': student.isEmailVerified,
+        'profile_pic_url': student.profilePicUrl,
+        'id_card_url': student.idCardUrl,
+        'status': student.status,
       });
 
       return student.copyWith(id: user.id);
