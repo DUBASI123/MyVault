@@ -78,9 +78,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (mounted) context.go(AppRoutes.home);
     } catch (e) {
       if (mounted) {
-        // Strip the 'Exception: ' prefix from error messages
-        final msg = e.toString().replaceFirst('Exception: ', '');
-        _snack(msg, error: true);
+        if (e is PendingVerificationException) {
+          _snack(e.toString(), error: true);
+        } else {
+          // Strip the 'Exception: ' prefix from error messages
+          final msg = e.toString().replaceFirst('Exception: ', '');
+          _snack(msg, error: true);
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

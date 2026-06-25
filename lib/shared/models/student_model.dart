@@ -20,7 +20,9 @@ class StudentModel {
   final String state;
   final String? profilePicUrl;
   final String? idCardUrl;
-  final String status;
+  final String verificationStatus;
+  final bool isVerified;
+  final String? rejectionReason;
   final bool isMobileVerified;
   final bool isEmailVerified;
   final DateTime createdAt;
@@ -47,7 +49,9 @@ class StudentModel {
     required this.state,
     this.profilePicUrl,
     this.idCardUrl,
-    this.status = 'PENDING',
+    this.verificationStatus = 'Pending',
+    this.isVerified = false,
+    this.rejectionReason,
     required this.isMobileVerified,
     required this.isEmailVerified,
     required this.createdAt,
@@ -82,7 +86,9 @@ class StudentModel {
       state: json['state'] ?? '',
       profilePicUrl: json['profile_pic_url'] ?? json['profilePicUrl'],
       idCardUrl: json['id_card_url'] ?? json['idCardUrl'],
-      status: json['status'] ?? 'PENDING',
+      verificationStatus: json['verification_status'] ?? json['verificationStatus'] ?? 'Pending',
+      isVerified: json['is_verified'] ?? json['isVerified'] ?? false,
+      rejectionReason: json['rejection_reason'] ?? json['rejectionReason'],
       isMobileVerified: json['is_mobile_verified'] ?? false,
       isEmailVerified: json['is_email_verified'] ?? false,
       createdAt: json['created_at'] != null
@@ -113,7 +119,9 @@ class StudentModel {
         'state': state,
         'profile_pic_url': profilePicUrl,
         'id_card_url': idCardUrl,
-        'status': status,
+        'verification_status': verificationStatus,
+        'is_verified': isVerified,
+        'rejection_reason': rejectionReason,
         'is_mobile_verified': isMobileVerified,
         'is_email_verified': isEmailVerified,
       };
@@ -140,7 +148,9 @@ class StudentModel {
     String? state,
     String? profilePicUrl,
     String? idCardUrl,
-    String? status,
+    String? verificationStatus,
+    bool? isVerified,
+    String? rejectionReason,
     bool? isMobileVerified,
     bool? isEmailVerified,
     DateTime? createdAt,
@@ -167,7 +177,9 @@ class StudentModel {
       state: state ?? this.state,
       profilePicUrl: profilePicUrl ?? this.profilePicUrl,
       idCardUrl: idCardUrl ?? this.idCardUrl,
-      status: status ?? this.status,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
+      isVerified: isVerified ?? this.isVerified,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
       isMobileVerified: isMobileVerified ?? this.isMobileVerified,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       createdAt: createdAt ?? this.createdAt,

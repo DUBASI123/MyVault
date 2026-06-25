@@ -1,9 +1,34 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/api_client.dart';
 import '../../../core/services/otp_service.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/cloudinary_service.dart';
 import '../../../shared/models/student_model.dart';
+
+// ─── Verification Exception ──────────────────────────────────────────────────
+class PendingVerificationException implements Exception {
+  final String collegeName;
+  final String status; // 'Pending' | 'Rejected'
+  final String? rejectionReason;
+
+  PendingVerificationException({
+    required this.collegeName,
+    required this.status,
+    this.rejectionReason,
+  });
+
+  @override
+  String toString() {
+    if (status == 'Rejected') {
+      return 'Your registration was rejected by $collegeName.'
+          '${rejectionReason != null ? ' Reason: $rejectionReason' : ''}';
+    }
+    return 'Your account is pending verification by $collegeName. '
+        'You will be able to log in once approved.';
+  }
+}
 
 // ─── Current student provider ─────────────────────────────────────────────────
 
@@ -29,7 +54,8 @@ class CurrentStudentNotifier extends StateNotifier<StudentModel?> {
     if (row != null) state = StudentModel.fromMap(row);
   }
 
-  void setStudent(StudentModel s) => state = s;
+  void setStudent(StudentModel? s) => state = s;
+  void clear() => state = null;
 
   Future<void> logout() async {
     await SupabaseService.signOut();
@@ -79,11 +105,17 @@ class AuthRepository {
 
       await _ref.read(currentStudentProvider.notifier).load();
       final student = _ref.read(currentStudentProvider);
-      if (student == null) throw Exception('Student profile not found. Please contact support.');
-      if (student.status != 'APPROVED') {
-        throw Exception(
-          'Your account is pending college verification.\n\n'
-          'You will be able to access MyVault after approval by your college administrator.'
+      if (student == null) {
+        await SupabaseService.signOut();
+        throw Exception('Student profile not found. Please contact support.');
+      }
+      if (!student.isVerified) {
+        await SupabaseService.signOut();
+        _ref.read(currentStudentProvider.notifier).clear();
+        throw PendingVerificationException(
+          collegeName: student.collegeName.isNotEmpty ? student.collegeName : 'your college',
+          status: student.verificationStatus,
+          rejectionReason: student.rejectionReason,
         );
       }
       return student;
@@ -103,10 +135,21 @@ class AuthRepository {
   }
 
   // ── Register ───────────────────────────────────────────────────────────────
-  Future<StudentModel> register(StudentModel student, String password) async {
+  Future<StudentModel> register(
+    StudentModel student,
+    String password, {
+    required String idCardPath,
+    required String profilePicPath,
+  }) async {
     try {
-      // 1. Create Supabase Auth user — emailRedirectTo: '' disables email
-      //    confirmation requirement so users can log in immediately.
+      // 1. Upload files first
+      final idCardUrl = await CloudinaryService.uploadFile(File(idCardPath));
+      if (idCardUrl == null) throw Exception('Failed to upload Student ID Card.');
+
+      final profilePicUrl = await CloudinaryService.uploadFile(File(profilePicPath));
+      if (profilePicUrl == null) throw Exception('Failed to upload Profile Photo.');
+
+      // 2. Create Supabase Auth user
       final response = await SupabaseService.signUp(
         email: student.email,
         password: password,
@@ -114,7 +157,7 @@ class AuthRepository {
       final user = response.user;
       if (user == null) throw Exception('Account creation failed. Please try again.');
 
-      // 2. Insert student profile
+      // 3. Insert student profile
       await _db.from('students').insert({
         'id': user.id,
         'first_name': student.firstName,
@@ -134,12 +177,19 @@ class AuthRepository {
         'state': student.state,
         'is_mobile_verified': student.isMobileVerified,
         'is_email_verified': student.isEmailVerified,
-        'profile_pic_url': student.profilePicUrl,
-        'id_card_url': student.idCardUrl,
-        'status': student.status,
+        'profile_pic_url': profilePicUrl,
+        'id_card_url': idCardUrl,
+        'verification_status': 'Pending',
+        'is_verified': false,
       });
 
-      return student.copyWith(id: user.id);
+      return student.copyWith(
+        id: user.id,
+        profilePicUrl: profilePicUrl,
+        idCardUrl: idCardUrl,
+        verificationStatus: 'Pending',
+        isVerified: false,
+      );
     } on AuthException catch (e) {
       final msg = e.message.toLowerCase();
       if (msg.contains('rate limit') || msg.contains('over_email_send_rate_limit') || msg.contains('security purposes')) {

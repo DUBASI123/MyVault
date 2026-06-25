@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
 async function main() {
-  const url = "postgresql://postgres.oawomrlsitttrbulxgyk:jzqqWU5XbrckrIAD@aws-1-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require";
+  const url = process.env.DATABASE_URL || "postgresql://postgres.oawomrlsitttrbulxgyk:jzqqWU5XbrckrIAD@aws-1-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require";
   const prisma = new PrismaClient({
     datasources: {
       db: { url }
@@ -13,6 +13,8 @@ async function main() {
     "ALTER TABLE students ENABLE ROW LEVEL SECURITY;",
     "DROP POLICY IF EXISTS \"student own data\" ON students;",
     "CREATE POLICY \"student own data\" ON students FOR ALL USING (auth.uid()::text = id);",
+    "DROP POLICY IF EXISTS \"admin view same college students\" ON students;",
+    "CREATE POLICY \"admin view same college students\" ON students FOR ALL USING (EXISTS (SELECT 1 FROM admins WHERE admins.id = auth.uid()::text AND admins.college_id = students.college_id));",
 
     // 2. Internship Applications
     "ALTER TABLE internship_applications ENABLE ROW LEVEL SECURITY;",
@@ -62,7 +64,12 @@ async function main() {
     // 11. Notifications
     "ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;",
     "DROP POLICY IF EXISTS \"public notifications\" ON notifications;",
-    "CREATE POLICY \"public notifications\" ON notifications FOR SELECT USING (TRUE);"
+    "CREATE POLICY \"public notifications\" ON notifications FOR SELECT USING (TRUE);",
+
+    // 12. Admins
+    "ALTER TABLE admins ENABLE ROW LEVEL SECURITY;",
+    "DROP POLICY IF EXISTS \"admin own record\" ON admins;",
+    "CREATE POLICY \"admin own record\" ON admins FOR ALL USING (auth.uid()::text = id);"
   ];
 
   try {

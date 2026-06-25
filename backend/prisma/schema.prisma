@@ -30,6 +30,7 @@ model College {
   type         String?
   state        String?
   students     Student[]
+  admins       Admin[]
   createdAt    DateTime   @default(now()) @map("created_at")
 
   @@map("colleges")
@@ -60,7 +61,9 @@ model Student {
   role             String    @default("student")
   isMobileVerified Boolean   @default(false) @map("is_mobile_verified")
   isEmailVerified  Boolean   @default(false) @map("is_email_verified")
-  status           String    @default("PENDING")
+  verificationStatus String    @default("Pending") @map("verification_status")
+  isVerified         Boolean   @default(false) @map("is_verified")
+  rejectionReason    String?   @map("rejection_reason")
   rewardPoints     Int       @default(0) @map("reward_points")
   createdAt        DateTime  @default(now()) @map("created_at")
   certificates     Certificate[]
@@ -227,5 +230,15 @@ model InternshipApplication {
 
   @@unique([studentId, internshipId])
   @@map("internship_applications")
+}
+
+model Admin {
+  id        String   @id
+  email     String   @unique
+  collegeId String   @map("college_id")
+  college   College  @relation(fields: [collegeId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("admins")
 }
 

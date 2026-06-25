@@ -14,7 +14,6 @@ import '../../../shared/models/student_model.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import '../../../shared/widgets/otp_verification_badge.dart';
-import '../../../core/services/cloudinary_service.dart';
 import '../data/auth_repository.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -322,14 +321,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final idCardUrl = await CloudinaryService.uploadFile(File(_studentIdPath!));
-      if (idCardUrl == null) throw Exception('Failed to upload Student ID Card.');
-
-      final profilePicUrl = await CloudinaryService.uploadFile(File(_profilePhotoPath!));
-      if (profilePicUrl == null) throw Exception('Failed to upload Profile Photo.');
-
       final student = StudentModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: '',
         firstName: _firstName.text.trim(),
         lastName: _lastName.text.trim(),
         fullNameAadhar: _aadharName.text.trim(),
@@ -348,12 +341,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         state: _state ?? '',
         isMobileVerified: true,
         isEmailVerified: true,
-        profilePicUrl: profilePicUrl,
-        idCardUrl: idCardUrl,
-        status: 'PENDING',
+        verificationStatus: 'Pending',
+        isVerified: false,
         createdAt: DateTime.now(),
       );
-      await ref.read(authRepositoryProvider).register(student, _password.text);
+      await ref.read(authRepositoryProvider).register(
+        student,
+        _password.text,
+        idCardPath: _studentIdPath!,
+        profilePicPath: _profilePhotoPath!,
+      );
       if (mounted) {
         showDialog(
           context: context,
