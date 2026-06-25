@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 
 class SubjectDetailScreen extends ConsumerStatefulWidget {
@@ -72,9 +73,31 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
                   itemCount: _resources.length,
                   itemBuilder: (context, i) {
                     final r = _resources[i];
+                    final contentType = r['content_type'] ?? r['contentType'] ?? r['resource_type'] ?? 'resource';
+                    final formattedType = contentType.toString().replaceAll('_', ' ').toUpperCase();
+
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
+                        onTap: r['file_url'] != null
+                            ? () async {
+                                final urlString = r['file_url'] as String;
+                                final url = Uri.parse(urlString);
+                                try {
+                                  if (await canLaunchUrl(url)) {
+                                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                                  } else {
+                                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Could not open file URL: $e')),
+                                    );
+                                  }
+                                }
+                              }
+                            : null,
                         leading: CircleAvatar(
                           backgroundColor: AppColors.academicHub.withValues(alpha: 0.1),
                           child: const Icon(Icons.file_present_rounded,
@@ -83,9 +106,9 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
                         title: Text(r['title'] ?? '',
                             style: const TextStyle(
                                 fontWeight: FontWeight.w600, fontFamily: 'Poppins')),
-                        subtitle: Text(r['resource_type'] ?? '',
+                        subtitle: Text(formattedType,
                             style: const TextStyle(
-                                color: AppColors.textSecondary, fontFamily: 'Poppins')),
+                                color: AppColors.textSecondary, fontFamily: 'Poppins', fontSize: 11)),
                         trailing: r['file_url'] != null
                             ? const Icon(Icons.download_rounded, color: AppColors.primary)
                             : null,
@@ -96,3 +119,4 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
     );
   }
 }
+
