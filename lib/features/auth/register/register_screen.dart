@@ -539,20 +539,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Mobile: ${_mobile.text}', style: const TextStyle(fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        OtpVerificationBadge(status: _mobileStatus),
-                      ],
+                    Text(
+                      'Mobile: ${_mobile.text}',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 4),
+                    OtpVerificationBadge(status: _mobileStatus),
                   ],
                 ),
               ),
+              const SizedBox(width: 16),
               if (_mobileStatus == OtpBadgeStatus.pending || _mobileStatus == OtpBadgeStatus.failed)
                 ElevatedButton(
                   onPressed: _sendMobileOtp,
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
                   child: const Text('Send OTP'),
                 ),
             ],
@@ -583,20 +587,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Email: ${_email.text}', style: const TextStyle(fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        OtpVerificationBadge(status: _emailStatus),
-                      ],
+                    Text(
+                      'Email: ${_email.text}',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 4),
+                    OtpVerificationBadge(status: _emailStatus),
                   ],
                 ),
               ),
+              const SizedBox(width: 16),
               if (_emailStatus == OtpBadgeStatus.pending || _emailStatus == OtpBadgeStatus.failed)
                 ElevatedButton(
                   onPressed: _sendEmailOtp,
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
                   child: const Text('Send OTP'),
                 ),
             ],
