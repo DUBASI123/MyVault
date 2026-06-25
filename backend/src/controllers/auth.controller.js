@@ -296,7 +296,7 @@ export async function getPendingStudents(req, res, next) {
       return res.status(403).json({ error: 'Unauthorized role' });
     }
 
-    const whereClause = { status: 'PENDING_APPROVAL' };
+    const whereClause = { verificationStatus: 'Pending' };
     if (admin.role === 'dept_admin') {
       whereClause.collegeId = admin.collegeId;
       whereClause.branch = admin.branch;
@@ -327,7 +327,11 @@ export async function approveStudent(req, res, next) {
 
     const student = await prisma.student.update({
       where: { id: studentId },
-      data: { status: 'APPROVED' },
+      data: {
+        verificationStatus: 'Approved',
+        isVerified: true,
+        rejectionReason: null,
+      },
     });
 
     await prisma.notification.create({
@@ -339,7 +343,11 @@ export async function approveStudent(req, res, next) {
     });
 
     try {
-      broadcastToUser(studentId, 'student_approved', { status: 'APPROVED' });
+      broadcastToUser(studentId, 'student_approved', {
+        status: 'APPROVED',
+        verificationStatus: 'Approved',
+        isVerified: true,
+      });
     } catch (_) {}
 
     res.json({ message: 'Student approved successfully', studentId });
@@ -355,12 +363,16 @@ export async function rejectStudent(req, res, next) {
       return res.status(403).json({ error: 'Unauthorized role' });
     }
 
-    const { studentId } = req.body;
+    const { studentId, reason } = req.body;
     if (!studentId) return res.status(400).json({ error: 'studentId required' });
 
     const student = await prisma.student.update({
       where: { id: studentId },
-      data: { status: 'REJECTED' },
+      data: {
+        verificationStatus: 'Rejected',
+        isVerified: false,
+        rejectionReason: reason || 'Rejected by administrator',
+      },
     });
 
     await prisma.notification.create({
@@ -372,7 +384,12 @@ export async function rejectStudent(req, res, next) {
     });
 
     try {
-      broadcastToUser(studentId, 'student_rejected', { status: 'REJECTED' });
+      broadcastToUser(studentId, 'student_rejected', {
+        status: 'REJECTED',
+        verificationStatus: 'Rejected',
+        isVerified: false,
+        rejectionReason: reason || 'Rejected by administrator',
+      });
     } catch (_) {}
 
     res.json({ message: 'Student rejected successfully', studentId });
