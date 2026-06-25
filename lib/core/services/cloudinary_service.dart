@@ -12,7 +12,7 @@ class CloudinaryService {
   static Future<String?> uploadFile(File file) async {
     try {
       const uploadUrl =
-          'https://api.cloudinary.com/v1_1/${Env.cloudinaryCloudName}/upload';
+          'https://api.cloudinary.com/v1_1/${Env.cloudinaryCloudName}/auto/upload';
 
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(file.path),
@@ -25,7 +25,8 @@ class CloudinaryService {
         return response.data['secure_url'] as String?;
       }
       return null;
-    } catch (_) {
+    } catch (e) {
+      print('Cloudinary upload error: $e');
       return null;
     }
   }
