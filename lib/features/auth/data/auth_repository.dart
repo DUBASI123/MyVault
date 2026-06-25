@@ -206,6 +206,41 @@ class AuthRepository {
       } else {
         throw Exception('Registration failed: ${e.message}');
       }
+    } on PostgrestException catch (e) {
+      final msg = e.message.toLowerCase();
+      if (msg.contains('students_mobile_key') || msg.contains('mobile')) {
+        throw Exception(
+          'This Mobile Number is already registered.\n\n'
+          '👉 Please use a different mobile number or log in if you already have an account.'
+        );
+      } else if (msg.contains('students_hall_ticket_key') || msg.contains('hall_ticket')) {
+        throw Exception(
+          'This Hall Ticket / Roll Number is already registered.\n\n'
+          '👉 Please verify your Hall Ticket number or contact support.'
+        );
+      } else if (msg.contains('students_email_key') || msg.contains('email')) {
+        throw Exception(
+          'This Email is already registered.\n\n'
+          '👉 Please use a different email or log in if you already have an account.'
+        );
+      } else {
+        throw Exception('Database registration failed: ${e.message}');
+      }
+    } catch (e) {
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('students_mobile_key') || errStr.contains('mobile')) {
+        throw Exception(
+          'This Mobile Number is already registered.\n\n'
+          '👉 Please use a different mobile number or log in if you already have an account.'
+        );
+      } else if (errStr.contains('students_hall_ticket_key') || errStr.contains('hall_ticket')) {
+        throw Exception(
+          'This Hall Ticket / Roll Number is already registered.\n\n'
+          '👉 Please verify your Hall Ticket number or contact support.'
+        );
+      } else {
+        throw Exception('Registration failed: $e');
+      }
     }
   }
 
