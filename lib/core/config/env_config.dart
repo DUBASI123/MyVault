@@ -15,6 +15,11 @@ class EnvConfig {
     defaultValue: 'dtdb4irno',
   );
 
+  static const cloudinaryUploadPreset = String.fromEnvironment(
+    'CLOUDINARY_UPLOAD_PRESET',
+    defaultValue: 'myvault_unsigned',
+  );
+
   static const apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'https://myvault-jbd7.onrender.com/api',

@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide MultipartFile;
-import '../config/env.dart';
+import '../config/env_config.dart';
 
 class CloudinaryService {
   static final Dio _dio = Dio();
@@ -12,11 +12,11 @@ class CloudinaryService {
   static Future<String?> uploadFile(File file) async {
     try {
       const uploadUrl =
-          'https://api.cloudinary.com/v1_1/${Env.cloudinaryCloudName}/auto/upload';
+          'https://api.cloudinary.com/v1_1/${EnvConfig.cloudinaryCloudName}/auto/upload';
 
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(file.path),
-        'upload_preset': Env.cloudinaryUploadPreset,
+        'upload_preset': EnvConfig.cloudinaryUploadPreset,
       });
 
       final response = await _dio.post(uploadUrl, data: formData);
