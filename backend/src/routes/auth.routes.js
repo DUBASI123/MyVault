@@ -10,9 +10,13 @@ import {
   getPendingStudents,
   approveStudent,
   rejectStudent,
+  uploadFile,
 } from '../controllers/auth.controller.js';
 import { authMiddleware } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validate.js';
+import multer from 'multer';
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router = Router();
 
@@ -76,5 +80,7 @@ router.get('/me', authMiddleware, getMe);
 router.get('/admin/pending-students', authMiddleware, getPendingStudents);
 router.post('/admin/approve-student', authMiddleware, approveStudent);
 router.post('/admin/reject-student', authMiddleware, rejectStudent);
+
+router.post('/upload', upload.single('file'), uploadFile);
 
 export default router;

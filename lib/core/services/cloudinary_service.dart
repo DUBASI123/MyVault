@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide MultipartFile;
 import '../config/env_config.dart';
+import 'api_client.dart';
 
 class CloudinaryService {
   static final Dio _dio = Dio();
@@ -10,6 +11,29 @@ class CloudinaryService {
 
   /// Upload any [file] to Cloudinary. Returns the secure URL or null on failure.
   static Future<String?> uploadFile(File file) async {
+    // 1. Try uploading securely to the Node.js backend first
+    try {
+      final filename = file.path.split(Platform.pathSeparator).last;
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          file.path,
+          filename: filename,
+        ),
+      });
+
+      final response = await ApiClient.instance.post(
+        '/auth/upload',
+        data: formData,
+      );
+
+      if (response.data != null && response.data['url'] != null) {
+        return response.data['url'] as String?;
+      }
+    } catch (e) {
+      print('Secure backend upload error: $e. Falling back to client-side Cloudinary.');
+    }
+
+    // 2. Fall back to client-side unsigned Cloudinary upload
     try {
       const uploadUrl =
           'https://api.cloudinary.com/v1_1/${EnvConfig.cloudinaryCloudName}/auto/upload';
@@ -28,7 +52,7 @@ class CloudinaryService {
       print('Cloudinary upload error: $e');
     }
     
-    // Graceful fallback dummy URLs to prevent blocking registration testing
+    // 3. Graceful fallback dummy URLs to prevent blocking registration testing
     final ext = file.path.split('.').last.toLowerCase();
     if (ext == 'pdf') {
       return 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';

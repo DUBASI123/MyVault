@@ -4,6 +4,7 @@ import { isEmailTarget, normalizePhone } from '../lib/phone.js';
 import { signToken } from '../middleware/auth.middleware.js';
 import { sendLiveOtpSms, sendLiveOtpEmail } from '../services/otp_delivery.service.js';
 import { broadcastToUser } from '../services/socket_service.js';
+import { uploadBuffer } from '../services/cloudinary.service.js';
 
 function generateOtp() {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -397,4 +398,17 @@ export async function rejectStudent(req, res, next) {
     next(err);
   }
 }
+
+export async function uploadFile(req, res, next) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    const secureUrl = await uploadBuffer(req.file.buffer, req.file.originalname);
+    res.json({ url: secureUrl });
+  } catch (err) {
+    next(err);
+  }
+}
+
 
