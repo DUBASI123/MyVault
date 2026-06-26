@@ -28,7 +28,7 @@ class EnvConfig {
   /// Treat emulator/local backend as live when true.
   static const useLocalBackend = bool.fromEnvironment(
     'USE_LOCAL_BACKEND',
-    defaultValue: true,
+    defaultValue: false,
   );
 
   /// Live mode — no mock login/demo data (default: on).

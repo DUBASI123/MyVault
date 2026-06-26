@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -22,56 +23,76 @@ class AcademicService {
     required String branch,
     required int semester,
   }) async {
-    if (EnvConfig.isBackendConfigured) {
-      final list = await ApiClient.getList('/academic/subjects', query: {
-        'branch': branch,
-        'semester': semester,
-      });
-      return list
-          .map((e) => SubjectModel.fromMap(e as Map<String, dynamic>))
-          .toList();
-    }
-
+    // Try Supabase first (no cold starts, fast response)
     if (SupabaseService.isAvailable) {
-      final response = await SupabaseService.client
-          .from('subjects')
-          .select()
-          .eq('branch', branch)
-          .eq('semester', semester)
-          .order('name');
-      return (response as List)
-          .map((e) => SubjectModel.fromMap(e as Map<String, dynamic>))
-          .toList();
+      try {
+        final response = await SupabaseService.client
+            .from('subjects')
+            .select()
+            .eq('branch', branch)
+            .eq('semester', semester)
+            .order('name');
+        return (response as List)
+            .map((e) => SubjectModel.fromMap(e as Map<String, dynamic>))
+            .toList();
+      } catch (e) {
+        debugPrint('Supabase getSubjects error, falling back to backend: $e');
+      }
     }
 
-    throw Exception('Academic data requires backend or Supabase. Set API_BASE_URL.');
+    // Fallback to backend
+    if (EnvConfig.isBackendConfigured) {
+      try {
+        final list = await ApiClient.getList('/academic/subjects', query: {
+          'branch': branch,
+          'semester': semester,
+        });
+        return list
+            .map((e) => SubjectModel.fromMap(e as Map<String, dynamic>))
+            .toList();
+      } catch (e) {
+        debugPrint('Backend getSubjects error: $e');
+      }
+    }
+
+    throw Exception('Academic data requires backend or Supabase.');
   }
 
   static Future<List<AcademicContentModel>> getContentsBySubject({
     required String subjectId,
     String contentType = 'all',
   }) async {
-    if (EnvConfig.isBackendConfigured) {
-      final list = await ApiClient.getList('/academic/contents/$subjectId', query: {
-        if (contentType != 'all') 'contentType': contentType,
-      });
-      return list
-          .map((e) => AcademicContentModel.fromMap(e as Map<String, dynamic>))
-          .toList();
+    // Try Supabase first (no cold starts, fast response)
+    if (SupabaseService.isAvailable) {
+      try {
+        var query = SupabaseService.client
+            .from('academic_contents')
+            .select()
+            .eq('subject_id', subjectId);
+        if (contentType != 'all') {
+          query = query.eq('content_type', contentType);
+        }
+        final response = await query.order('created_at', ascending: false);
+        return (response as List)
+            .map((e) => AcademicContentModel.fromMap(e as Map<String, dynamic>))
+            .toList();
+      } catch (e) {
+        debugPrint('Supabase getContentsBySubject error, falling back to backend: $e');
+      }
     }
 
-    if (SupabaseService.isAvailable) {
-      var query = SupabaseService.client
-          .from('academic_contents')
-          .select()
-          .eq('subject_id', subjectId);
-      if (contentType != 'all') {
-        query = query.eq('content_type', contentType);
+    // Fallback to backend
+    if (EnvConfig.isBackendConfigured) {
+      try {
+        final list = await ApiClient.getList('/academic/contents/$subjectId', query: {
+          if (contentType != 'all') 'contentType': contentType,
+        });
+        return list
+            .map((e) => AcademicContentModel.fromMap(e as Map<String, dynamic>))
+            .toList();
+      } catch (e) {
+        debugPrint('Backend getContentsBySubject error: $e');
       }
-      final response = await query.order('created_at', ascending: false);
-      return (response as List)
-          .map((e) => AcademicContentModel.fromMap(e as Map<String, dynamic>))
-          .toList();
     }
 
     throw Exception('Academic content requires backend or Supabase.');
