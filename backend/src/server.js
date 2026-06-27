@@ -35,8 +35,7 @@ app.get('/', (_, res) => {
 });
 
 app.get('/download-apk', (_, res) => {
-  const apkPath = path.resolve('public/MyVault-release.apk');
-  res.download(apkPath, 'MyVault-release.apk');
+  res.redirect('https://oawomrlsitttrbulxgyk.supabase.co/storage/v1/object/public/academic-files/MyVault-release.apk');
 });
 
 app.get('/api/health/live', async (_req, res, next) => {
