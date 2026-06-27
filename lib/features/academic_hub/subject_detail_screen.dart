@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
 import '../../../core/constants/app_colors.dart';
 
 class SubjectDetailScreen extends ConsumerStatefulWidget {
@@ -80,23 +83,11 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
                         onTap: r['file_url'] != null
-                            ? () async {
-                                final resolvedUrl = _resolveFileUrl(r['file_url'] as String?);
-                                final url = Uri.parse(resolvedUrl);
-                                try {
-                                  if (await canLaunchUrl(url)) {
-                                    await launchUrl(url, mode: LaunchMode.externalApplication);
-                                  } else {
-                                    await launchUrl(url, mode: LaunchMode.externalApplication);
-                                  }
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Could not open file URL: $e')),
-                                    );
-                                  }
-                                }
-                              }
+                            ? () => _downloadAndOpenFile(
+                                  context,
+                                  _resolveFileUrl(r['file_url'] as String?),
+                                  r['title'] as String? ?? 'document',
+                                )
                             : null,
                         leading: CircleAvatar(
                           backgroundColor: AppColors.academicHub.withValues(alpha: 0.1),
@@ -126,6 +117,88 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
     }
     final cleanUrl = url.startsWith('/') ? url : '/$url';
     return 'https://college-admin-portal-zdet.onrender.com$cleanUrl';
+  }
+
+  Future<void> _downloadAndOpenFile(BuildContext context, String fileUrl, String title) async {
+    // Show download progress dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: AppColors.primary),
+                SizedBox(height: 16),
+                Text('Downloading file...', style: TextStyle(fontFamily: 'Poppins', fontSize: 14)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final tempDir = await getTemporaryDirectory();
+      
+      // Derive file extension from URL or default to pdf
+      String ext = 'pdf';
+      try {
+        final uri = Uri.parse(fileUrl);
+        final pathSegments = uri.pathSegments;
+        if (pathSegments.isNotEmpty) {
+          final last = pathSegments.last;
+          if (last.contains('.')) {
+            ext = last.split('.').last.toLowerCase();
+          }
+        }
+      } catch (_) {}
+
+      // Clean file name to prevent path escape issues
+      final safeTitle = title.replaceAll(RegExp(r'[^\w\s\-]'), '_').trim();
+      final savePath = '${tempDir.path}/${safeTitle}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+
+      final dio = Dio();
+      await dio.download(fileUrl, savePath);
+
+      // Close loading dialog
+      if (context.mounted) Navigator.pop(context);
+
+      // Open using native handler
+      final result = await OpenFilex.open(savePath);
+      if (result.type != ResultType.done && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open file: ${result.message}'),
+            backgroundColor: AppColors.error,
+          ),
+        ); 
+      }
+    } catch (e) {
+      // Close dialog
+      if (context.mounted) Navigator.pop(context);
+      
+      debugPrint('Direct download failed, falling back to browser: $e');
+      // Fallback: URL Launcher in browser
+      final url = Uri.parse(fileUrl);
+      try {
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+        }
+      } catch (err) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not open file link: $err'),
+              backgroundColor: AppColors.error,
+            ),
+          ); 
+        }
+      }
+    }
   }
 }
 
