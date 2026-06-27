@@ -60,8 +60,8 @@ class _InternshipsScreenState extends ConsumerState<InternshipsScreen>
                   unselectedLabelColor: AppColors.textLight,
                   indicatorColor: AppColors.primary,
                   tabs: const [
-                    Tab(text: 'IT Field'),
-                    Tab(text: 'Core Field'),
+                    Tab(text: 'Internships'),
+                    Tab(text: 'Placements'),
                     Tab(text: 'Prep Videos'),
                   ],
                 ),
@@ -72,8 +72,8 @@ class _InternshipsScreenState extends ConsumerState<InternshipsScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _list('IT'),
-                _list('core'),
+                _list(['internship', 'IT']),
+                _list(['placement', 'job', 'core']),
                 _videosList(),
               ],
             ),
@@ -83,9 +83,9 @@ class _InternshipsScreenState extends ConsumerState<InternshipsScreen>
     );
   }
 
-  Widget _list(String type) {
+  Widget _list(List<String> types) {
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: AppDataService.getInternships(type: type),
+      future: AppDataService.getInternships(types: types),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());

@@ -108,13 +108,11 @@ class AppDataService {
     return [];
   }
 
-  static Future<List<Map<String, dynamic>>> getInternships({String? type}) async {
+  static Future<List<Map<String, dynamic>>> getInternships({List<String>? types}) async {
     if (EnvConfig.isBackendConfigured) {
       try {
-        final list = await ApiClient.getList('/content/internships', query: {
-          if (type != null) 'type': type,
-        });
-        return list.map((e) {
+        final list = await ApiClient.getList('/content/internships');
+        final mappedList = list.map((e) {
           final m = Map<String, dynamic>.from(e as Map<String, dynamic>);
           return {
             'id': m['id']?.toString(),
@@ -130,6 +128,11 @@ class AppDataService {
             'status': m['status'],
           };
         }).toList();
+
+        if (types != null && types.isNotEmpty) {
+          return mappedList.where((item) => types.contains(item['type'])).toList();
+        }
+        return mappedList;
       } catch (e) {
         debugPrint('Backend internships error, falling back to Supabase: $e');
       }
@@ -137,8 +140,8 @@ class AppDataService {
     if (SupabaseService.isAvailable) {
       try {
         var query = SupabaseService.client.from('internships').select();
-        if (type != null) {
-          query = query.eq('type', type);
+        if (types != null && types.isNotEmpty) {
+          query = query.inFilter('type', types);
         }
         final response = await query.order('created_at', ascending: false);
         return (response as List).map((e) {
