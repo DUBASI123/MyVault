@@ -20,23 +20,24 @@ final academicSemesterProvider = StateProvider<int>((ref) => 1);
 // ─── Content types ────────────────────────────────────────────────────────────
 
 const _contentTypes = [
-  _ContentType('Textbooks', Icons.menu_book_outlined, Color(0xFF6C63FF)),
-  _ContentType('Recorded Notes', Icons.note_alt_outlined, Color(0xFF00C2A8)),
-  _ContentType('Video Lectures', Icons.play_circle_outline_rounded, Color(0xFFFF6B6B)),
-  _ContentType('PDFs & Slides', Icons.picture_as_pdf_outlined, Color(0xFFFFB020)),
-  _ContentType('Question Banks', Icons.quiz_outlined, Color(0xFF3B82F6)),
-  _ContentType('Previous Papers', Icons.history_edu_outlined, Color(0xFF9B59B6)),
-  _ContentType('Mock Tests', Icons.fact_check_outlined, Color(0xFF2ECC71)),
-  _ContentType('Practical Questions', Icons.science_outlined, Color(0xFFE67E22)),
-  _ContentType('Lab Manual', Icons.biotech_outlined, Color(0xFF1ABC9C)),
-  _ContentType('Lab Experiments', Icons.biotech_rounded, Color(0xFFE91E63)),
+  _ContentType('Textbooks', Icons.menu_book_outlined, Color(0xFF6C63FF), ['ebook']),
+  _ContentType('Recorded Notes', Icons.note_alt_outlined, Color(0xFF00C2A8), ['notes']),
+  _ContentType('Video Lectures', Icons.play_circle_outline_rounded, Color(0xFFFF6B6B), ['video']),
+  _ContentType('PDFs & Slides', Icons.picture_as_pdf_outlined, Color(0xFFFFB020), ['pdf', 'ppt']),
+  _ContentType('Question Banks', Icons.quiz_outlined, Color(0xFF3B82F6), ['other', 'syllabus']),
+  _ContentType('Previous Papers', Icons.history_edu_outlined, Color(0xFF9B59B6), ['question_paper']),
+  _ContentType('Mock Tests', Icons.fact_check_outlined, Color(0xFF2ECC71), ['other']),
+  _ContentType('Practical Questions', Icons.science_outlined, Color(0xFFE67E22), ['other']),
+  _ContentType('Lab Manual', Icons.biotech_outlined, Color(0xFF1ABC9C), ['lab_manual']),
+  _ContentType('Lab Experiments', Icons.biotech_rounded, Color(0xFFE91E63), ['lab_manual']),
 ];
 
 class _ContentType {
   final String name;
   final IconData icon;
   final Color color;
-  const _ContentType(this.name, this.icon, this.color);
+  final List<String> dbTypes;
+  const _ContentType(this.name, this.icon, this.color, this.dbTypes);
 }
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
@@ -332,7 +333,11 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
     return GestureDetector(
       onTap: () {
         // Navigate to subject detail with content type pre-selected
-        context.push(AppRoutes.subjectDetail, extra: subject.id);
+        context.push(AppRoutes.subjectDetail, extra: {
+          'subjectId': subject.id,
+          'categoryName': ct.name,
+          'dbTypes': ct.dbTypes,
+        });
       },
       child: Container(
         decoration: BoxDecoration(

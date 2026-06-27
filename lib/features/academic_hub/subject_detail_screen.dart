@@ -10,7 +10,15 @@ import '../../../core/constants/app_colors.dart';
 
 class SubjectDetailScreen extends ConsumerStatefulWidget {
   final String subjectId;
-  const SubjectDetailScreen({super.key, required this.subjectId});
+  final String categoryName;
+  final List<String> dbTypes;
+
+  const SubjectDetailScreen({
+    super.key,
+    required this.subjectId,
+    required this.categoryName,
+    required this.dbTypes,
+  });
 
   @override
   ConsumerState<SubjectDetailScreen> createState() => _SubjectDetailScreenState();
@@ -35,11 +43,16 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
           .eq('id', widget.subjectId)
           .maybeSingle();
 
-      final res = await Supabase.instance.client
+      var query = Supabase.instance.client
           .from('academic_contents')
           .select()
-          .eq('subject_id', widget.subjectId)
-          .order('unit_number');
+          .eq('subject_id', widget.subjectId);
+
+      if (widget.dbTypes.isNotEmpty) {
+        query = query.inFilter('content_type', widget.dbTypes);
+      }
+
+      final res = await query.order('unit_number');
 
       if (mounted) {
         setState(() {
@@ -57,7 +70,9 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_subject?['name'] ?? 'Subject'),
+        title: Text(_subject != null
+            ? '${_subject!['name']} - ${widget.categoryName}'
+            : widget.categoryName),
         backgroundColor: AppColors.academicHub,
         foregroundColor: Colors.white,
         centerTitle: true,

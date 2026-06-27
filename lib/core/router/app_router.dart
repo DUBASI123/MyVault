@@ -71,8 +71,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.subjectDetail,
         builder: (context, state) {
-          final subjectId = state.extra as String;
-          return SubjectDetailScreen(subjectId: subjectId);
+          final extra = state.extra as Map<String, dynamic>;
+          return SubjectDetailScreen(
+            subjectId: extra['subjectId'] as String,
+            categoryName: extra['categoryName'] as String,
+            dbTypes: List<String>.from(extra['dbTypes'] as List),
+          );
         },
       ),
       GoRoute(path: AppRoutes.results, builder: (context, state) => const ResultsScreen()),
