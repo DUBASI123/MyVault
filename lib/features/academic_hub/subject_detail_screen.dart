@@ -196,19 +196,10 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
   }
 
   Future<void> _saveToDownloadsFolder(BuildContext context, String fileUrl, String title) async {
-    // If it's a Cloudinary URL, append fl_attachment to force download in browser
-    String downloadUrl = fileUrl;
-    if (fileUrl.contains('cloudinary.com')) {
-      if (fileUrl.contains('/upload/')) {
-        downloadUrl = fileUrl.replaceFirst('/upload/', '/upload/fl_attachment/');
-      }
-    } else if (fileUrl.startsWith('/') || fileUrl.contains('onrender.com')) {
-      // For local upload links, append ?download=true to force a backend download
-      final uri = Uri.parse(fileUrl);
-      final newQueryParams = Map<String, String>.from(uri.queryParameters);
-      newQueryParams['download'] = 'true';
-      downloadUrl = uri.replace(queryParameters: newQueryParams).toString();
-    }
+    // Call the server-side download proxy
+    final downloadUrl = 'https://college-admin-portal-zdet.onrender.com/api/download-proxy'
+        '?url=${Uri.encodeComponent(fileUrl)}'
+        '&filename=${Uri.encodeComponent(title)}';
 
     final url = Uri.parse(downloadUrl);
     try {
