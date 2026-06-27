@@ -33,6 +33,7 @@ dependencies:
   # File & Media
   image_picker: ^1.0.7
   file_picker: ^8.0.0
+  open_filex: ^4.5.0
   dio: ^5.4.1
 
   # Utils

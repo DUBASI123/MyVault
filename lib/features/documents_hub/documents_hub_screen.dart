@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:open_filex/open_filex.dart';
 import '../../core/constants/app_colors.dart';
 import '../../shared/widgets/app_scaffold.dart';
 
@@ -450,6 +451,28 @@ class _DocumentsHubScreenState extends ConsumerState<DocumentsHubScreen> {
         ],
       ),
       child: ListTile(
+        onTap: () async {
+          if (doc.filePath.isNotEmpty && File(doc.filePath).existsSync()) {
+            final result = await OpenFilex.open(doc.filePath);
+            if (result.type != ResultType.done && mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Could not open file: ${result.message}'),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('File does not exist or has been moved.'),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
+          }
+        },
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Container(
           width: 48,

@@ -81,8 +81,8 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
                       child: ListTile(
                         onTap: r['file_url'] != null
                             ? () async {
-                                final urlString = r['file_url'] as String;
-                                final url = Uri.parse(urlString);
+                                final resolvedUrl = _resolveFileUrl(r['file_url'] as String?);
+                                final url = Uri.parse(resolvedUrl);
                                 try {
                                   if (await canLaunchUrl(url)) {
                                     await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -117,6 +117,15 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
                   },
                 ),
     );
+  }
+
+  String _resolveFileUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    final cleanUrl = url.startsWith('/') ? url : '/$url';
+    return 'https://college-admin-portal-zdet.onrender.com$cleanUrl';
   }
 }
 
