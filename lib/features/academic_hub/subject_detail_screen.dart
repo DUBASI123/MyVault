@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -98,7 +99,7 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
                         onTap: r['file_url'] != null
-                            ? () => _downloadAndOpenFile(
+                            ? () => _showDocumentOptions(
                                   context,
                                   _resolveFileUrl(r['file_url'] as String?),
                                   r['title'] as String? ?? 'document',
@@ -134,6 +135,100 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
     return 'https://college-admin-portal-zdet.onrender.com$cleanUrl';
   }
 
+  void _showDocumentOptions(BuildContext context, String fileUrl, String title) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Poppins',
+                color: AppColors.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.menu_book_rounded),
+              label: const Text('View Document Natively', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _downloadAndOpenFile(context, fileUrl, title);
+              },
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.download_rounded),
+              label: const Text('Save to Downloads folder', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _saveToDownloadsFolder(context, fileUrl, title);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveToDownloadsFolder(BuildContext context, String fileUrl, String title) async {
+    // If it's a Cloudinary URL, append fl_attachment to force download in browser
+    String downloadUrl = fileUrl;
+    if (fileUrl.contains('cloudinary.com')) {
+      if (fileUrl.contains('/upload/')) {
+        downloadUrl = fileUrl.replaceFirst('/upload/', '/upload/fl_attachment/');
+      }
+    } else if (fileUrl.startsWith('/') || fileUrl.contains('onrender.com')) {
+      // For local upload links, append ?download=true to force a backend download
+      final uri = Uri.parse(fileUrl);
+      final newQueryParams = Map<String, String>.from(uri.queryParameters);
+      newQueryParams['download'] = 'true';
+      downloadUrl = uri.replace(queryParameters: newQueryParams).toString();
+    }
+
+    final url = Uri.parse(downloadUrl);
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(url, mode: LaunchMode.externalApplication); 
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not trigger download: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        ); 
+      }
+    }
+  }
+
   Future<void> _downloadAndOpenFile(BuildContext context, String fileUrl, String title) async {
     // Show download progress dialog
     showDialog(
@@ -157,7 +252,16 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
     );
 
     try {
-      final tempDir = await getTemporaryDirectory();
+      Directory? tempDir;
+      if (Platform.isAndroid) {
+        try {
+          final dirs = await getExternalCacheDirectories();
+          if (dirs != null && dirs.isNotEmpty) {
+            tempDir = dirs.first;
+          }
+        } catch (_) {}
+      }
+      tempDir ??= await getTemporaryDirectory();
       
       // Derive file extension from URL or default to pdf
       String ext = 'pdf';
@@ -192,7 +296,7 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
           ),
         ); 
       }
-    } catch (e) {
+    } catch (e) { 
       // Close dialog
       if (context.mounted) Navigator.pop(context);
       
@@ -202,7 +306,7 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
       try {
         if (await canLaunchUrl(url)) {
           await launchUrl(url, mode: LaunchMode.externalApplication);
-        }
+        } 
       } catch (err) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
