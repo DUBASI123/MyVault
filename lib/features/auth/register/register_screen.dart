@@ -8,7 +8,6 @@ import '../../../core/mock/mock_data.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/services/master_service.dart';
 import '../../../shared/models/college_model.dart';
-import '../../../shared/models/university_model.dart';
 import '../../../core/services/otp_service.dart';
 import '../../../shared/models/student_model.dart';
 import '../../../shared/widgets/custom_button.dart';
@@ -40,7 +39,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _college;
   String? _universityId;
   String? _collegeId;
-  List<UniversityModel> _universities = [];
   List<CollegeModel> _colleges = [];
   String? _course;
   String? _branch;
@@ -55,53 +53,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUniversities();
+    _loadColleges();
   }
 
-  Future<void> _loadUniversities() async {
+  Future<void> _loadColleges() async {
     try {
-      final unis = await MasterService.getUniversities();
-      if (unis.isEmpty) {
-        if (mounted) setState(() => _universities = MockData.universities);
-      } else {
-        if (mounted) setState(() => _universities = unis);
-      }
-    } catch (_) {
-      if (mounted) setState(() => _universities = MockData.universities);
-    }
-  }
-
-  Future<void> _onUniversitySelected(String? name) async {
-    setState(() {
-      _university = name;
-      _college = null;
-      _collegeId = null;
-      _colleges = [];
-    });
-    if (name == null) return;
-    final uni = _universities.where((u) => u.name == name).firstOrNull;
-    if (uni == null) return;
-    _universityId = uni.id;
-    try {
-      final cols = await MasterService.getColleges(uni.id);
+      final cols = await MasterService.getAllColleges();
       if (cols.isEmpty) {
-        if (mounted) {
-          setState(() => _colleges = MockData.colleges.where((c) => c.universityId == uni.id).toList());
-        }
+        if (mounted) setState(() => _colleges = MockData.colleges);
       } else {
         if (mounted) setState(() => _colleges = cols);
       }
     } catch (_) {
-      if (mounted) {
-        setState(() => _colleges = MockData.colleges.where((c) => c.universityId == uni.id).toList());
-      }
+      if (mounted) setState(() => _colleges = MockData.colleges);
     }
   }
 
   void _onCollegeSelected(String? name) {
     setState(() {
       _college = name;
-      _collegeId = _colleges.where((c) => c.name == name).firstOrNull?.id;
+      final selectedCol = _colleges.where((c) => c.name == name).firstOrNull;
+      _collegeId = selectedCol?.id;
+      _universityId = selectedCol?.universityId;
+      _university = selectedCol?.universityId;
     });
   }
 
@@ -283,12 +257,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             isRequired: true,
           ),
           const SizedBox(height: 20),
-          _dropdown('University', _university, _universities.map((u) => u.name).toList(), _onUniversitySelected),
-          const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             value: _college,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'College'),
+            decoration: const InputDecoration(labelText: 'Select College'),
             items: _colleges.map((c) {
               final label = c.district != null ? '${c.name} — ${c.district}' : c.name;
               return DropdownMenuItem(value: c.name, child: Text(label));
@@ -305,10 +277,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               }
               if (_mobile.text.trim().isEmpty || _email.text.trim().isEmpty) {
                 _snack('Please fill in Mobile and Email', error: true);
-                return;
-              }
-              if (_university == null) {
-                _snack('Please select University', error: true);
                 return;
               }
               if (_college == null) {

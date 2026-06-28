@@ -47,4 +47,18 @@ class MasterService {
     if (uni == null) return [];
     return getColleges(uni.id);
   }
+
+  static Future<List<CollegeModel>> getAllColleges() async {
+    try {
+      final response = await SupabaseService.client
+          .from('colleges')
+          .select()
+          .order('name', ascending: true);
+      return (response as List)
+          .map((e) => CollegeModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
 }
