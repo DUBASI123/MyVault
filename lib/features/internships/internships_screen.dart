@@ -84,8 +84,9 @@ class _InternshipsScreenState extends ConsumerState<InternshipsScreen>
   }
 
   Widget _list(List<String> types) {
+    final student = ref.watch(currentStudentProvider);
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: AppDataService.getInternships(types: types),
+      future: AppDataService.getInternships(types: types, collegeId: student?.collegeId),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());

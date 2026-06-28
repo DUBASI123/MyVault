@@ -28,10 +28,12 @@ class AppDataService {
     return 'My Vault — student platform';
   }
 
-  static Future<List<Map<String, dynamic>>> getNotifications() async {
+  static Future<List<Map<String, dynamic>>> getNotifications({String? collegeId}) async {
     if (EnvConfig.isBackendConfigured) {
       try {
-        final list = await ApiClient.getList('/content/notifications');
+        final list = await ApiClient.getList('/content/notifications', query: {
+          if (collegeId != null) 'collegeId': collegeId,
+        });
         return list.cast<Map<String, dynamic>>();
       } catch (e) {
         debugPrint('Backend notifications error, falling back to Supabase: $e');
@@ -39,10 +41,11 @@ class AppDataService {
     }
     if (SupabaseService.isAvailable) {
       try {
-        final response = await SupabaseService.client
-            .from('notifications')
-            .select()
-            .order('created_at', ascending: false);
+        var query = SupabaseService.client.from('notifications').select();
+        if (collegeId != null && collegeId.isNotEmpty) {
+          query = query.eq('college_id', collegeId);
+        }
+        final response = await query.order('created_at', ascending: false);
         return List<Map<String, dynamic>>.from(response);
       } catch (e) {
         debugPrint('Supabase notifications error: $e');
@@ -108,7 +111,10 @@ class AppDataService {
     return [];
   }
 
-  static Future<List<Map<String, dynamic>>> getInternships({List<String>? types}) async {
+  static Future<List<Map<String, dynamic>>> getInternships({
+    List<String>? types,
+    String? collegeId,
+  }) async {
     if (EnvConfig.isBackendConfigured) {
       try {
         final list = await ApiClient.getList('/content/internships');
@@ -140,6 +146,9 @@ class AppDataService {
     if (SupabaseService.isAvailable) {
       try {
         var query = SupabaseService.client.from('internships').select();
+        if (collegeId != null && collegeId.isNotEmpty) {
+          query = query.eq('college_id', collegeId);
+        }
         if (types != null && types.isNotEmpty) {
           query = query.inFilter('type', types);
         }

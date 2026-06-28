@@ -20,7 +20,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    _future = AppDataService.getNotifications();
+    final student = ref.read(currentStudentProvider);
+    _future = AppDataService.getNotifications(collegeId: student?.collegeId);
   }
 
   @override
