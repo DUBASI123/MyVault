@@ -13,7 +13,12 @@ import contentRoutes from './routes/content.routes.js';
 import { getLiveStatus } from './lib/live_status.js';
 import { initSocket } from './services/socket_service.js';
 
+import { fileURLToPath } from 'url';
+
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -35,7 +40,8 @@ app.get('/', (_, res) => {
 });
 
 app.get('/download-apk', (_, res) => {
-  res.redirect('https://oawomrlsitttrbulxgyk.supabase.co/storage/v1/object/public/academic-files/MyVault-release.apk');
+  const apkPath = path.join(__dirname, '../public/MyVault-release.apk');
+  res.download(apkPath, 'MyVault-release.apk');
 });
 
 app.get('/api/health/live', async (_req, res, next) => {
