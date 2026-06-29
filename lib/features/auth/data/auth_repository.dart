@@ -198,14 +198,13 @@ class AuthRepository {
       final msg = e.message.toLowerCase();
       if (msg.contains('rate limit') || msg.contains('over_email_send_rate_limit') || msg.contains('security purposes')) {
         throw Exception(
-          'Email rate limit exceeded.\n\n'
-          '👉 IMPORTANT: Please turn off "Confirm email" in your Supabase Dashboard '
-          '(Authentication -> Providers -> Email -> Turn off "Confirm email") to allow instant registrations.'
+          'Too many registration attempts. Please wait a few minutes and try again.'
         );
       } else if (msg.contains('already registered') || msg.contains('user_already_exists')) {
         throw Exception(
           'This email is already registered.\n\n'
-          '👉 FIX: If your previous registration failed halfway, please go to your Supabase Dashboard -> Authentication -> Users, delete this user record, and register again.'
+          '👉 If you have already registered, please wait for college administrator approval before logging in. '
+          'If you believe this is an error, please contact support.'
         );
       } else {
         throw Exception('Registration failed: ${e.message}');
