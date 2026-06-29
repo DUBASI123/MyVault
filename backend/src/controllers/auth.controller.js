@@ -121,7 +121,8 @@ export async function login(req, res, next) {
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
     // Block login if student is not approved
-    if (student.verificationStatus && student.verificationStatus.toLowerCase() !== 'approved') {
+    const isApproved = student.isVerified || (student.verificationStatus && student.verificationStatus.toLowerCase() === 'approved');
+    if (!isApproved) {
       return res.status(403).json({ error: 'Your student account is pending approval by the college administration.' });
     }
 
