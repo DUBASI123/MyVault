@@ -183,6 +183,10 @@ class AuthRepository {
         'is_verified': false,
       });
 
+      // Force sign out immediately after registration to destroy session and prevent automatic dashboard entry
+      await SupabaseService.signOut();
+      _ref.read(currentStudentProvider.notifier).clear();
+
       return student.copyWith(
         id: user.id,
         profilePicUrl: profilePicUrl,
