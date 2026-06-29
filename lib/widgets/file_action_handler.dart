@@ -14,35 +14,43 @@ class FileActionHandler {
     required String fileUrl,       // Supabase storage signed URL
     required String fileName,      // e.g. "Unit1_Notes.pdf"
   }) async {
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => DownloadProgressSheet(
-        url: fileUrl,
-        fileName: fileName,
-        onOpenFile: (localPath) {
-          final viewType = FileTypeUtils.getViewType(fileName);
-          if (viewType == FileViewType.pdf) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PdfViewerScreen(filePath: localPath, fileName: fileName),
-              ),
-            );
-          } else if (viewType == FileViewType.image) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ImageViewerScreen(filePath: localPath, fileName: fileName),
-              ),
-            );
-          } else {
-            _openLocalFile(context, localPath);
-          }
-        },
-      ),
-    );
+    final viewType = FileTypeUtils.getViewType(fileName);
+
+    switch (viewType) {
+      case FileViewType.pdf:
+        // Stream PDF directly in-app — no download needed first
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PdfViewerScreen(url: fileUrl, fileName: fileName),
+          ),
+        );
+        break;
+
+      case FileViewType.image:
+        // Show image in-app full-screen viewer
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ImageViewerScreen(url: fileUrl, fileName: fileName),
+          ),
+        );
+        break;
+
+      case FileViewType.other:
+        // Show download sheet for DOCX/XLSX/PPT/ZIP etc.
+        await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => DownloadProgressSheet(
+            url: fileUrl,
+            fileName: fileName,
+            onOpenFile: (localPath) => _openLocalFile(context, localPath),
+          ),
+        );
+        break;
+    }
   }
 
   /// Opens any locally downloaded file with the system's default app
