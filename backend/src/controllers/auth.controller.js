@@ -120,6 +120,11 @@ export async function login(req, res, next) {
     const valid = await bcrypt.compare(password, student.passwordHash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
+    // Block login if student is not approved
+    if (student.verificationStatus && student.verificationStatus.toLowerCase() !== 'approved') {
+      return res.status(403).json({ error: 'Your student account is pending approval by the college administration.' });
+    }
+
     const token = signToken({ sub: student.id, role: student.role });
     res.json({ token, student: studentResponse(student) });
   } catch (err) {
