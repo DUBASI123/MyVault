@@ -146,27 +146,24 @@ class AppDataService {
     if (SupabaseService.isAvailable) {
       try {
         var query = SupabaseService.client.from('internships').select();
-        if (collegeId != null && collegeId.isNotEmpty) {
-          query = query.eq('college_id', collegeId);
-        }
         if (types != null && types.isNotEmpty) {
-          query = query.inFilter('type', types);
+          query = query.inFilter('sector', types);
         }
         final response = await query.order('created_at', ascending: false);
         return (response as List).map((e) {
           final m = Map<String, dynamic>.from(e as Map<String, dynamic>);
           return {
             'id': m['id']?.toString(),
-            'company': m['company'],
-            'role': m['role'],
-            'type': m['type'],
+            'company': m['company_name'] ?? m['company'],
+            'role': m['title'] ?? m['role'],
+            'type': m['sector'] ?? m['type'],
             'domain': m['domain'],
             'stipend': m['stipend'],
             'duration': m['duration'],
             'deadline': m['deadline'],
-            'applyLink': m['apply_link'] ?? m['applyLink'],
-            'logo': m['logo'],
-            'status': m['status'],
+            'applyLink': m['apply_url'] ?? m['applyLink'],
+            'logo': m['logo'] ?? '🏢',
+            'status': m['is_active'] == false ? 'Closed' : 'Open',
           };
         }).toList();
       } catch (e) {
