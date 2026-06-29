@@ -92,14 +92,14 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
                   itemCount: _resources.length,
                   itemBuilder: (context, i) {
                     final r = _resources[i];
-                    final contentType = r['content_type'] ?? r['contentType'] ?? r['resource_type'] ?? 'resource';
+                     final contentType = r['content_type'] ?? r['contentType'] ?? r['resource_type'] ?? 'resource';
                     final formattedType = contentType.toString().replaceAll('_', ' ').toUpperCase();
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
                         onTap: r['file_url'] != null
-                            ? () => _showDocumentOptions(
+                            ? () => _downloadAndOpenFile(
                                   context,
                                   _resolveFileUrl(r['file_url'] as String?),
                                   r['title'] as String? ?? 'document',
@@ -117,7 +117,7 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
                             style: const TextStyle(
                                 color: AppColors.textSecondary, fontFamily: 'Poppins', fontSize: 11)),
                         trailing: r['file_url'] != null
-                            ? const Icon(Icons.download_rounded, color: AppColors.primary)
+                            ? const Icon(Icons.remove_red_eye_rounded, color: AppColors.primary)
                             : null,
                       ),
                     ).animate(delay: Duration(milliseconds: i * 60)).fadeIn().slideY(begin: 0.1);
@@ -133,91 +133,6 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
     }
     final cleanUrl = url.startsWith('/') ? url : '/$url';
     return 'https://college-admin-portal-zdet.onrender.com$cleanUrl';
-  }
-
-  void _showDocumentOptions(BuildContext context, String fileUrl, String title) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Poppins',
-                color: AppColors.textPrimary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              icon: const Icon(Icons.menu_book_rounded),
-              label: const Text('View Document Natively', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _downloadAndOpenFile(context, fileUrl, title);
-              },
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              icon: const Icon(Icons.download_rounded),
-              label: const Text('Save to Downloads folder', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _saveToDownloadsFolder(context, fileUrl, title);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _saveToDownloadsFolder(BuildContext context, String fileUrl, String title) async {
-    // Call the server-side download proxy
-    final downloadUrl = 'https://college-admin-portal-zdet.onrender.com/api/download-proxy'
-        '?url=${Uri.encodeComponent(fileUrl)}'
-        '&filename=${Uri.encodeComponent(title)}';
-
-    final url = Uri.parse(downloadUrl);
-    try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        await launchUrl(url, mode: LaunchMode.externalApplication); 
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not trigger download: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        ); 
-      }
-    }
   }
 
   Future<void> _downloadAndOpenFile(BuildContext context, String fileUrl, String title) async {
@@ -291,22 +206,14 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
       // Close dialog
       if (context.mounted) Navigator.pop(context);
       
-      debugPrint('Direct download failed, falling back to browser: $e');
-      // Fallback: URL Launcher in browser
-      final url = Uri.parse(fileUrl);
-      try {
-        if (await canLaunchUrl(url)) {
-          await launchUrl(url, mode: LaunchMode.externalApplication);
-        } 
-      } catch (err) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Could not open file link: $err'),
-              backgroundColor: AppColors.error,
-            ),
-          ); 
-        }
+      debugPrint('Direct download failed: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to download and open study resource: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        ); 
       }
     }
   }

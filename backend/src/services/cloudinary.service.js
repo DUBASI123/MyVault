@@ -11,6 +11,7 @@ export async function uploadBuffer(buffer, originalName) {
       {
         resource_type: 'auto',
         folder: 'myvault_uploads',
+        type: 'upload',
       },
       (error, result) => {
         if (error) return reject(error);
