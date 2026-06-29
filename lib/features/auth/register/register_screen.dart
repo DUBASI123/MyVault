@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/mock/mock_data.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/services/master_service.dart';
+import '../../../core/storage/app_storage.dart';
 import '../../../shared/models/college_model.dart';
 import '../../../core/services/otp_service.dart';
 import '../../../shared/models/student_model.dart';
@@ -171,123 +172,70 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         idCardPath: _studentIdPath!,
         profilePicPath: _profilePhotoPath!,
       );
+
+      // Clear ALL locally saved credentials and sessions completely
+      await AppStorage.instance.clearSession();
+
       if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            elevation: 0,
+        // Immediately go to login — no dialog, no wait
+        context.go(AppRoutes.login);
+
+        // Show a beautiful green SnackBar notification at the top
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            duration: const Duration(seconds: 5),
             backgroundColor: Colors.transparent,
-            child: Container(
-              padding: const EdgeInsets.all(28),
+            elevation: 0,
+            content: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF22C55E), Color(0xFF15803D)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.12),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
+                    color: const Color(0xFF22C55E).withOpacity(0.4),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              child: const Row(
                 children: [
-                  // Green success circle with checkmark
-                  Container(
-                    width: 84,
-                    height: 84,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF22C55E).withOpacity(0.35),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.check_rounded, color: Colors.white, size: 44),
+                  CircleAvatar(
+                    backgroundColor: Colors.white24,
+                    radius: 18,
+                    child: Icon(Icons.check_rounded, color: Colors.white, size: 20),
                   ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Registration Submitted!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Your account has been submitted successfully and is now pending college administrator approval.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF64748B),
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0FDF4),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.3)),
-                    ),
-                    child: const Row(
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.notifications_active_rounded, color: Color(0xFF16A34A), size: 18),
-                        SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            'You will be notified via email & SMS once approved.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF16A34A),
-                              fontWeight: FontWeight.w500,
-                            ),
+                        Text(
+                          'Account Submitted!',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'You will be notified via Email & SMS once approved by the college admin.',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            height: 1.3,
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        context.go(AppRoutes.login);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6C63FF),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        'Go to Login',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
                     ),
                   ),
                 ],
