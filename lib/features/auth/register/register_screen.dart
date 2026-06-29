@@ -51,34 +51,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _profilePhotoPath;
 
 
-  @override
-  void initState() {
-    super.initState();
-    _loadColleges();
-  }
 
-  Future<void> _loadColleges() async {
-    try {
-      final cols = await MasterService.getAllColleges();
-      if (cols.isEmpty) {
-        if (mounted) setState(() => _colleges = MockData.colleges);
-      } else {
-        if (mounted) setState(() => _colleges = cols);
-      }
-    } catch (_) {
-      if (mounted) setState(() => _colleges = MockData.colleges);
-    }
-  }
-
-  void _onCollegeSelected(String? name) {
-    setState(() {
-      _college = name;
-      final selectedCol = _colleges.where((c) => c.name == name).firstOrNull;
-      _collegeId = selectedCol?.id;
-      _universityId = selectedCol?.universityId;
-      _university = selectedCol?.universityId;
-    });
-  }
   @override
   void dispose() {
     _pageController.dispose();
@@ -256,17 +229,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             keyboardType: TextInputType.emailAddress,
             isRequired: true,
           ),
-          const SizedBox(height: 20),
-          DropdownButtonFormField<String>(
-            value: _college,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Select College'),
-            items: _colleges.map((c) {
-              final label = c.district != null ? '${c.name} — ${c.district}' : c.name;
-              return DropdownMenuItem(value: c.name, child: Text(label));
-            }).toList(),
-            onChanged: _onCollegeSelected,
-          ),
           const SizedBox(height: 24),
           CustomButton(
             text: 'Next: Academic Info',
@@ -277,10 +239,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               }
               if (_mobile.text.trim().isEmpty || _email.text.trim().isEmpty) {
                 _snack('Please fill in Mobile and Email', error: true);
-                return;
-              }
-              if (_college == null) {
-                _snack('Please select College', error: true);
                 return;
               }
               _goToPage(1);
