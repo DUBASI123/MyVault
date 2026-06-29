@@ -1,13 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:open_filex/open_filex.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../widgets/file_action_handler.dart';
 
 class SubjectDetailScreen extends ConsumerStatefulWidget {
   final String subjectId;
@@ -99,10 +95,10 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
                         onTap: r['file_url'] != null
-                            ? () => _downloadAndOpenFile(
-                                  context,
-                                  _resolveFileUrl(r['file_url'] as String?),
-                                  r['title'] as String? ?? 'document',
+                            ? () => FileActionHandler.handleFileTap(
+                                  context: context,
+                                  fileUrl: _resolveFileUrl(r['file_url'] as String?),
+                                  fileName: r['title'] as String? ?? 'document.pdf',
                                 )
                             : null,
                         leading: CircleAvatar(
@@ -133,89 +129,6 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
     }
     final cleanUrl = url.startsWith('/') ? url : '/$url';
     return 'https://college-admin-portal-zdet.onrender.com$cleanUrl';
-  }
-
-  Future<void> _downloadAndOpenFile(BuildContext context, String fileUrl, String title) async {
-    // Show download progress dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: AppColors.primary),
-                SizedBox(height: 16),
-                Text('Downloading file...', style: TextStyle(fontFamily: 'Poppins', fontSize: 14)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    try {
-      Directory? tempDir;
-      if (Platform.isAndroid) {
-        try {
-          final dirs = await getExternalCacheDirectories();
-          if (dirs != null && dirs.isNotEmpty) {
-            tempDir = dirs.first;
-          }
-        } catch (_) {}
-      }
-      tempDir ??= await getTemporaryDirectory();
-      
-      // Derive file extension from URL or default to pdf
-      String ext = 'pdf';
-      try {
-        final uri = Uri.parse(fileUrl);
-        final pathSegments = uri.pathSegments;
-        if (pathSegments.isNotEmpty) {
-          final last = pathSegments.last;
-          if (last.contains('.')) {
-            ext = last.split('.').last.toLowerCase();
-          }
-        }
-      } catch (_) {}
-
-      // Clean file name to prevent path escape issues
-      final safeTitle = title.replaceAll(RegExp(r'[^\w\s\-]'), '_').trim();
-      final savePath = '${tempDir.path}/${safeTitle}_${DateTime.now().millisecondsSinceEpoch}.$ext';
-
-      final dio = Dio();
-      await dio.download(fileUrl, savePath);
-
-      // Close loading dialog
-      if (context.mounted) Navigator.pop(context);
-
-      // Open using native handler
-      final result = await OpenFilex.open(savePath);
-      if (result.type != ResultType.done && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not open file: ${result.message}'),
-            backgroundColor: AppColors.error,
-          ),
-        ); 
-      }
-    } catch (e) { 
-      // Close dialog
-      if (context.mounted) Navigator.pop(context);
-      
-      debugPrint('Direct download failed: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to download and open study resource: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        ); 
-      }
-    }
   }
 }
 
