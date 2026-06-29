@@ -39,7 +39,29 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     if (!mounted) return;
 
     if (session != null) {
-      context.go(AppRoutes.home);
+      // Check if student is actually approved before going to home
+      try {
+        final userId = session.user.id;
+        final row = await Supabase.instance.client
+            .from('students')
+            .select('is_verified, verification_status')
+            .eq('id', userId)
+            .maybeSingle();
+
+        final isVerified = row?['is_verified'] as bool? ?? false;
+        final status = (row?['verification_status'] as String? ?? '').toLowerCase();
+
+        if (isVerified && status == 'approved') {
+          if (mounted) context.go(AppRoutes.home);
+        } else {
+          // Not yet approved — sign out and go to login
+          await Supabase.instance.client.auth.signOut();
+          if (mounted) context.go(AppRoutes.login);
+        }
+      } catch (_) {
+        await Supabase.instance.client.auth.signOut();
+        if (mounted) context.go(AppRoutes.login);
+      }
     } else {
       context.go(AppRoutes.login);
     }

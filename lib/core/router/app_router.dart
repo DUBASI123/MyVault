@@ -47,18 +47,53 @@ class AppRoutes {
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
-    redirect: (context, state) {
+    redirect: (context, state) async {
       final session = Supabase.instance.client.auth.currentSession;
       final isLoggedIn = session != null;
-      final isAuthRoute = state.matchedLocation == AppRoutes.login ||
-          state.matchedLocation == AppRoutes.register ||
-          state.matchedLocation == AppRoutes.forgotPassword ||
-          state.matchedLocation == AppRoutes.splash;
+      final location = state.matchedLocation;
 
+      final isAuthRoute = location == AppRoutes.login ||
+          location == AppRoutes.register ||
+          location == AppRoutes.forgotPassword ||
+          location == AppRoutes.splash;
+
+      // Not logged in → force to login for protected routes
       if (!isLoggedIn && !isAuthRoute) return AppRoutes.login;
-      if (isLoggedIn && (state.matchedLocation == AppRoutes.login || state.matchedLocation == AppRoutes.register)) {
-        return AppRoutes.home;
+
+      // Logged in but on auth page → check if student is actually approved
+      if (isLoggedIn && (location == AppRoutes.login || location == AppRoutes.register)) {
+        // Check verification status from database before allowing home
+        try {
+          final userId = session.user.id;
+          final row = await Supabase.instance.client
+              .from('students')
+              .select('is_verified, verification_status')
+              .eq('id', userId)
+              .maybeSingle();
+
+          if (row == null) {
+            // No student profile found — sign out and stay on login
+            await Supabase.instance.client.auth.signOut();
+            return AppRoutes.login;
+          }
+
+          final isVerified = row['is_verified'] as bool? ?? false;
+          final status = (row['verification_status'] as String? ?? '').toLowerCase();
+
+          if (!isVerified || status != 'approved') {
+            // Still pending/rejected — sign out and stay on login
+            await Supabase.instance.client.auth.signOut();
+            return AppRoutes.login;
+          }
+
+          // Fully approved — allow into dashboard
+          return AppRoutes.home;
+        } catch (_) {
+          await Supabase.instance.client.auth.signOut();
+          return AppRoutes.login;
+        }
       }
+
       return null;
     },
     routes: [
