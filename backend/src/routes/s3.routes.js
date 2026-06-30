@@ -3,14 +3,20 @@ import { getPresignedViewUrl, getPresignedDownloadUrl } from '../lib/s3.js';
 
 const router = Router();
 
+const getCleanPath = (pathParam) => {
+  if (Array.isArray(pathParam)) {
+    return pathParam.join('/');
+  }
+  return pathParam || '';
+};
+
 /**
  * GET /api/s3/view/*path
  * Returns a fresh pre-signed S3 URL for viewing a file.
- * Express v5 requires named wildcard params (*path instead of *)
  */
 router.get('/view/*path', async (req, res, next) => {
   try {
-    const key = req.params.path;
+    const key = getCleanPath(req.params.path);
     if (!key) return res.status(400).json({ error: 'File key is required' });
 
     const url = await getPresignedViewUrl(key);
@@ -26,9 +32,9 @@ router.get('/view/*path', async (req, res, next) => {
  */
 router.get('/download/*path', async (req, res, next) => {
   try {
-    const key = req.params.path;
-    const fileName = req.query.fileName || key.split('/').pop();
+    const key = getCleanPath(req.params.path);
     if (!key) return res.status(400).json({ error: 'File key is required' });
+    const fileName = req.query.fileName || key.split('/').pop();
 
     const url = await getPresignedDownloadUrl(key, fileName);
     res.json({ url });
@@ -40,11 +46,10 @@ router.get('/download/*path', async (req, res, next) => {
 /**
  * GET /api/s3/redirect/*path
  * Directly redirects to the pre-signed S3 URL.
- * The Flutter app stores this as file_url and opens it directly.
  */
 router.get('/redirect/*path', async (req, res, next) => {
   try {
-    const key = req.params.path;
+    const key = getCleanPath(req.params.path);
     if (!key) return res.status(400).json({ error: 'File key is required' });
 
     const url = await getPresignedViewUrl(key);
