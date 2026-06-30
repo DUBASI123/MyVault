@@ -1,408 +1,649 @@
+// ============================================================
+// screens/course_detail_screen.dart
+// ============================================================
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/internship_models.dart';
-import '../widgets/course_video_player.dart';
+import '../providers/internship_providers.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/router/app_router.dart';
 
-class CourseDetailScreen extends StatefulWidget {
-  final InternshipCourse course;
-  final StudentCourseProgress initialProgress;
-
-  /// Called whenever the student toggles a video's completed state.
-  /// Wire this to your backend/repository to persist the change.
-  final Future<void> Function(String videoId, bool completed) onToggleVideo;
-
-  /// Called when the student taps "Take Test" after finishing all videos.
-  final VoidCallback? onTakeTest;
-
-  /// Internships that become visible once this course is completed
-  /// (matched via [InternshipOpportunity.relatedCourseId] or
-  /// [InternshipOpportunity.preferredCourseIds]).
-  final List<InternshipOpportunity> unlockedOpportunities;
-
-  const CourseDetailScreen({
-    super.key,
-    required this.course,
-    required this.initialProgress,
-    required this.onToggleVideo,
-    this.onTakeTest,
-    this.unlockedOpportunities = const [],
-  });
+class CourseDetailScreen extends ConsumerStatefulWidget {
+  final String courseId;
+  const CourseDetailScreen({super.key, required this.courseId});
 
   @override
-  State<CourseDetailScreen> createState() => _CourseDetailScreenState();
+  ConsumerState<CourseDetailScreen> createState() => _CourseDetailScreenState();
 }
 
-class _CourseDetailScreenState extends State<CourseDetailScreen> {
-  late StudentCourseProgress _progress;
-  final Set<String> _pendingToggles = {};
+class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
+  bool _enrolling = false;
+  final Set<int> _expandedSections = {0};
 
   @override
-  void initState() {
-    super.initState();
-    _progress = widget.initialProgress;
-  }
+  Widget build(BuildContext context) {
+    final courseAsync = ref.watch(courseDetailProvider(widget.courseId));
+    final progressAsync = ref.watch(courseProgressProvider(widget.courseId));
 
-  int get _totalVideos => widget.course.computedTotalVideos;
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: courseAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.internships)),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (course) {
+          final progress = progressAsync.value;
+          final isEnrolled = progress != null;
+          final isCertified = progress?.status == CourseStatus.certified;
+          final isCompleted = progress?.status == CourseStatus.completed || isCertified;
 
-  List<String> get _allVideoIds => widget.course.sections
-      .expand((s) => s.videos)
-      .map((v) => v.id)
-      .toList();
+          final totalVideos = course.sections.fold(0, (s, sec) => s + sec.videos.length);
+          final completedCount = progress?.completedVideoIds.length ?? 0;
+          final progressPct = totalVideos > 0 ? completedCount / totalVideos : 0.0;
 
-  bool get _allVideosDone => _progress.allVideosCompleted(_allVideoIds);
+          return CustomScrollView(
+            slivers: [
+              // Hero AppBar with thumbnail
+              SliverAppBar(
+                expandedHeight: 220,
+                pinned: true,
+                backgroundColor: AppColors.internships,
+                foregroundColor: Colors.white,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: course.thumbnailUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: course.thumbnailUrl,
+                          imageBuilder: (context, imageProvider) => Container(
+                            decoration: BoxDecoration(
+                              image: DecorationImage(
+                                image: imageProvider,
+                                fit: BoxFit.cover,
+                                colorFilter: ColorFilter.mode(
+                                  Colors.black.withValues(alpha: 0.3),
+                                  BlendMode.darken,
+                                ),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (_, __, ___) => Container(color: AppColors.internships),
+                        )
+                      : Container(color: AppColors.internships),
+                ),
+              ),
 
-  Future<void> _openVideo(CourseVideo video) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => _VideoPlaybackScreen(video: video)),
-    );
-    // Offer to mark as watched after returning from playback, rather than
-    // auto-completing on tap — confirmation keeps progress data honest.
-    if (!mounted) return;
-    final alreadyDone = _progress.completedVideoIds.contains(video.id);
-    if (alreadyDone) return;
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Category badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.internships.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(course.category,
+                            style: const TextStyle(color: AppColors.internships, fontFamily: 'Poppins',
+                                fontSize: 12, fontWeight: FontWeight.w600)),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(course.title,
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800,
+                              fontFamily: 'Poppins', color: AppColors.textPrimary)),
+                      const SizedBox(height: 8),
+                      Text(course.subtitle,
+                          style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, fontFamily: 'Poppins')),
+                      const SizedBox(height: 16),
 
-    final shouldMark = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Mark as watched?'),
-        content: Text('Mark "${video.title}" as complete?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Not yet'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Mark complete'),
-          ),
-        ],
+                      // Stats row
+                      Row(
+                        children: [
+                          _statChip(Icons.play_circle_outline, '${course.totalVideos} videos'),
+                          const SizedBox(width: 12),
+                          _statChip(Icons.assignment_outlined, '${course.totalAssignments} tasks'),
+                          const SizedBox(width: 12),
+                          _statChip(Icons.star_rounded, '${course.rating}', color: const Color(0xFFFFB020)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Progress bar (if enrolled)
+                      if (isEnrolled) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Progress', style: TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Poppins')),
+                            Text('$completedCount / $totalVideos videos',
+                                style: const TextStyle(color: AppColors.textSecondary, fontFamily: 'Poppins', fontSize: 12)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: LinearProgressIndicator(
+                            value: progressPct,
+                            minHeight: 8,
+                            backgroundColor: AppColors.border,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isCertified ? AppColors.success : AppColors.internships,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Enroll / Take Test / View Certificate CTA
+                      _buildCTA(course, progress, isEnrolled, isCompleted, isCertified, totalVideos),
+                      const SizedBox(height: 24),
+
+                      // Description
+                      const Text('About this course',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'Poppins')),
+                      const SizedBox(height: 8),
+                      Text(course.description,
+                          style: const TextStyle(color: AppColors.textSecondary, fontFamily: 'Poppins', height: 1.6)),
+                      const SizedBox(height: 20),
+
+                      // Skills
+                      if (course.skillsYouLearn.isNotEmpty) ...[
+                        const Text('What you\'ll learn',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'Poppins')),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: course.skillsYouLearn
+                              .map((s) => Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryLight,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(s,
+                                        style: const TextStyle(color: AppColors.primary, fontSize: 12,
+                                            fontFamily: 'Poppins', fontWeight: FontWeight.w500)),
+                                  ))
+                              .toList(),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
+                      // Curriculum
+                      const Text('Curriculum',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'Poppins')),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Sections accordion
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (_, i) {
+                    final section = course.sections[i];
+                    final expanded = _expandedSections.contains(i);
+                    return _SectionTile(
+                      section: section,
+                      expanded: expanded,
+                      isEnrolled: isEnrolled,
+                      completedVideoIds: progress?.completedVideoIds ?? {},
+                      submittedAssignmentIds: progress?.submittedAssignmentIds ?? {},
+                      totalVideos: course.sections.fold(0, (s, sec) => s + sec.videos.length),
+                      totalAssignments: course.totalAssignments,
+                      courseId: widget.courseId,
+                      onToggle: () => setState(() {
+                        if (expanded) {
+                          _expandedSections.remove(i);
+                        } else {
+                          _expandedSections.add(i);
+                        }
+                      }),
+                    ).animate(delay: Duration(milliseconds: i * 40)).fadeIn();
+                  },
+                  childCount: course.sections.length,
+                ),
+              ),
+              const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
+            ],
+          );
+        },
       ),
     );
-    if (shouldMark == true) {
-      await _toggleVideo(video);
-    }
   }
 
-  Future<void> _toggleVideo(CourseVideo video) async {
-    final currentlyDone = _progress.completedVideoIds.contains(video.id);
-    final nextDone = !currentlyDone;
-
-    setState(() {
-      _pendingToggles.add(video.id);
-      final updated = Set<String>.from(_progress.completedVideoIds);
-      nextDone ? updated.add(video.id) : updated.remove(video.id);
-      _progress = StudentCourseProgress(
-        id: _progress.id,
-        studentId: _progress.studentId,
-        courseId: _progress.courseId,
-        completedVideoIds: updated,
-        submittedAssignmentIds: _progress.submittedAssignmentIds,
-        status: _progress.status,
-        testScore: _progress.testScore,
-        testMaxScore: _progress.testMaxScore,
-        testPassed: _progress.testPassed,
-        certificateId: _progress.certificateId,
-        enrolledAt: _progress.enrolledAt,
-        completedAt: _progress.completedAt,
-        certifiedAt: _progress.certifiedAt,
+  Widget _buildCTA(
+    InternshipCourse course,
+    StudentCourseProgress? progress,
+    bool isEnrolled,
+    bool isCompleted,
+    bool isCertified,
+    int totalVideos,
+  ) {
+    if (isCertified) {
+      return Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () => context.push(AppRoutes.certificateView, extra: widget.courseId),
+              icon: const Icon(Icons.card_membership_rounded),
+              label: const Text('View Certificate'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
+        ],
       );
-    });
+    }
 
+    if (isCompleted) {
+      return Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF27AE60).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF27AE60).withValues(alpha: 0.3)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Color(0xFF27AE60)),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text('All content completed! Take the final test to earn your certificate.',
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Color(0xFF27AE60))),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => context.push(AppRoutes.courseTest, extra: widget.courseId),
+              icon: const Icon(Icons.quiz_rounded),
+              label: const Text('Take Final Test'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.internships,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (isEnrolled) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.internships.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.internships.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.play_circle_rounded, color: AppColors.internships),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Keep watching videos and completing assignments to unlock the test.',
+                  style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: AppColors.internships)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Not enrolled
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _enrolling ? null : () => _enroll(course),
+        icon: _enrolling
+            ? const SizedBox(width: 18, height: 18,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : const Icon(Icons.school_rounded),
+        label: Text(_enrolling ? 'Enrolling...' : 'Enroll for Free'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.internships,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _enroll(InternshipCourse course) async {
+    setState(() => _enrolling = true);
     try {
-      await widget.onToggleVideo(video.id, nextDone);
-    } catch (_) {
-      // Revert on failure so the UI doesn't drift from the backend.
-      if (!mounted) return;
-      setState(() {
-        final reverted = Set<String>.from(_progress.completedVideoIds);
-        currentlyDone ? reverted.add(video.id) : reverted.remove(video.id);
-        _progress = StudentCourseProgress(
-          id: _progress.id,
-          studentId: _progress.studentId,
-          courseId: _progress.courseId,
-          completedVideoIds: reverted,
-          submittedAssignmentIds: _progress.submittedAssignmentIds,
-          status: _progress.status,
-          testScore: _progress.testScore,
-          testMaxScore: _progress.testMaxScore,
-          testPassed: _progress.testPassed,
-          certificateId: _progress.certificateId,
-          enrolledAt: _progress.enrolledAt,
-          completedAt: _progress.completedAt,
-          certifiedAt: _progress.certifiedAt,
-        );
-      });
+      final repo = ref.read(internshipRepositoryProvider);
+      await repo.enrollInCourse(widget.courseId);
+      ref.invalidate(courseProgressProvider(widget.courseId));
+      ref.invalidate(myEnrolledCoursesProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not update progress. Try again.')),
+          SnackBar(
+            content: Text('Enrolled in ${course.title}!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _pendingToggles.remove(video.id));
-      }
+      if (mounted) setState(() => _enrolling = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final course = widget.course;
-    final percent = _progress.videoProgressPercent(_totalVideos);
+  Widget _statChip(IconData icon, String text, {Color color = AppColors.textSecondary}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 4),
+        Text(text, style: TextStyle(fontSize: 12, color: color, fontFamily: 'Poppins')),
+      ],
+    );
+  }
+}
 
-    return Scaffold(
-      appBar: AppBar(title: Text(course.title)),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+// ─── Section Tile ────────────────────────────────────────────
+class _SectionTile extends ConsumerWidget {
+  final CourseSection section;
+  final bool expanded;
+  final bool isEnrolled;
+  final Set<String> completedVideoIds;
+  final Set<String> submittedAssignmentIds;
+  final int totalVideos;
+  final int totalAssignments;
+  final String courseId;
+  final VoidCallback onToggle;
+
+  const _SectionTile({
+    required this.section,
+    required this.expanded,
+    required this.isEnrolled,
+    required this.completedVideoIds,
+    required this.submittedAssignmentIds,
+    required this.totalVideos,
+    required this.totalAssignments,
+    required this.courseId,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
         children: [
-          _CourseHeader(course: course, progressPercent: percent),
-          const SizedBox(height: 20),
-          ...course.sections
-              .asMap()
-              .entries
-              .map((entry) => _SectionCard(
-                    index: entry.key + 1,
-                    section: entry.value,
-                    completedVideoIds: _progress.completedVideoIds,
-                    submittedAssignmentIds: _progress.submittedAssignmentIds,
-                    pendingToggles: _pendingToggles,
-                    onOpenVideo: _openVideo,
-                  )),
-          const SizedBox(height: 12),
-          if (_allVideosDone) _TestUnlockCard(onTakeTest: widget.onTakeTest),
-          if (widget.unlockedOpportunities.isNotEmpty &&
-              _progress.status == CourseStatus.certified)
-            _OpportunitiesUnlockedCard(
-                opportunities: widget.unlockedOpportunities),
+          InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onToggle,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.internships.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text('${section.orderIndex}',
+                          style: const TextStyle(color: AppColors.internships, fontWeight: FontWeight.w700,
+                              fontFamily: 'Poppins', fontSize: 13)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(section.title,
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Poppins', fontSize: 13)),
+                        Text('${section.videos.length} videos • ${section.assignments.length} assignment',
+                            style: const TextStyle(fontSize: 11, color: AppColors.textLight, fontFamily: 'Poppins')),
+                      ],
+                    ),
+                  ),
+                  Icon(expanded ? Icons.expand_less : Icons.expand_more, color: AppColors.textLight),
+                ],
+              ),
+            ),
+          ),
+          if (expanded) ...[
+            const Divider(height: 1),
+            ...section.videos.map((video) => _VideoRow(
+                  video: video,
+                  isEnrolled: isEnrolled,
+                  isCompleted: completedVideoIds.contains(video.id),
+                  courseId: courseId,
+                  totalVideos: totalVideos,
+                  totalAssignments: totalAssignments,
+                )),
+            ...section.assignments.map((assignment) => _AssignmentRow(
+                  assignment: assignment,
+                  isEnrolled: isEnrolled,
+                  isSubmitted: submittedAssignmentIds.contains(assignment.id),
+                  courseId: courseId,
+                  totalVideos: totalVideos,
+                  totalAssignments: totalAssignments,
+                )),
+          ],
         ],
       ),
     );
   }
 }
 
-class _CourseHeader extends StatelessWidget {
-  final InternshipCourse course;
-  final double progressPercent;
+class _VideoRow extends ConsumerWidget {
+  final CourseVideo video;
+  final bool isEnrolled;
+  final bool isCompleted;
+  final String courseId;
+  final int totalVideos;
+  final int totalAssignments;
 
-  const _CourseHeader({required this.course, required this.progressPercent});
+  const _VideoRow({
+    required this.video,
+    required this.isEnrolled,
+    required this.isCompleted,
+    required this.courseId,
+    required this.totalVideos,
+    required this.totalAssignments,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceVariant,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canWatch = isEnrolled || video.isPreview;
+
+    return ListTile(
+      dense: true,
+      leading: CircleAvatar(
+        radius: 16,
+        backgroundColor: isCompleted
+            ? AppColors.success.withValues(alpha: 0.1)
+            : (video.isPreview ? AppColors.internships.withValues(alpha: 0.1) : AppColors.border),
+        child: Icon(
+          isCompleted ? Icons.check_rounded : Icons.play_arrow_rounded,
+          size: 18,
+          color: isCompleted ? AppColors.success : (video.isPreview ? AppColors.internships : AppColors.textLight),
+        ),
+      ),
+      title: Text(video.title,
+          style: TextStyle(
+            fontSize: 13,
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.w500,
+            color: canWatch ? AppColors.textPrimary : AppColors.textLight,
+          )),
+      subtitle: Row(
+        children: [
+          Text(video.formattedDuration,
+              style: const TextStyle(fontSize: 11, color: AppColors.textLight, fontFamily: 'Poppins')),
+          if (video.isPreview) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: AppColors.internships.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('FREE', style: TextStyle(fontSize: 9, color: AppColors.internships, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ],
+      ),
+      trailing: canWatch
+          ? (isCompleted
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.check_circle_outline, size: 20, color: AppColors.textLight),
+                  tooltip: 'Mark as watched',
+                  onPressed: () async {
+                    // Launch video in browser
+                    final url = Uri.parse(video.videoUrl);
+                    if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
+                    // Mark completed
+                    await ref.read(courseProgressNotifierProvider.notifier).markVideoWatched(
+                          courseId: courseId,
+                          videoId: video.id,
+                          totalVideos: totalVideos,
+                          totalAssignments: totalAssignments,
+                        );
+                  },
+                ))
+          : const Icon(Icons.lock_outlined, size: 18, color: AppColors.textLight),
+      onTap: canWatch
+          ? () async {
+              final url = Uri.parse(video.videoUrl);
+              if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
+            }
+          : null,
+    );
+  }
+}
+
+class _AssignmentRow extends ConsumerWidget {
+  final CourseAssignment assignment;
+  final bool isEnrolled;
+  final bool isSubmitted;
+  final String courseId;
+  final int totalVideos;
+  final int totalAssignments;
+
+  const _AssignmentRow({
+    required this.assignment,
+    required this.isEnrolled,
+    required this.isSubmitted,
+    required this.courseId,
+    required this.totalVideos,
+    required this.totalAssignments,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListTile(
+      dense: true,
+      leading: CircleAvatar(
+        radius: 16,
+        backgroundColor: isSubmitted
+            ? AppColors.success.withValues(alpha: 0.1)
+            : AppColors.primary.withValues(alpha: 0.1),
+        child: Icon(
+          isSubmitted ? Icons.check_rounded : Icons.assignment_rounded,
+          size: 16,
+          color: isSubmitted ? AppColors.success : AppColors.primary,
+        ),
+      ),
+      title: Text(assignment.title,
+          style: const TextStyle(fontSize: 13, fontFamily: 'Poppins', fontWeight: FontWeight.w500)),
+      subtitle: Text('Max ${assignment.maxScore} pts',
+          style: const TextStyle(fontSize: 11, color: AppColors.textLight, fontFamily: 'Poppins')),
+      trailing: isEnrolled && !isSubmitted
+          ? TextButton(
+              onPressed: () => _showSubmitDialog(context, ref),
+              child: const Text('Submit', style: TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+            )
+          : isSubmitted
+              ? const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20)
+              : null,
+    );
+  }
+
+  Future<void> _showSubmitDialog(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(assignment.title, style: const TextStyle(fontFamily: 'Poppins', fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(course.subtitle, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: (progressPercent / 100).clamp(0.0, 1.0),
-                      minHeight: 8,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text('${progressPercent.round()}%',
-                    style: theme.textTheme.labelLarge),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                Chip(label: Text(course.category)),
-                Chip(label: Text(course.difficulty.name)),
-                Chip(label: Text('${course.totalVideos} videos')),
-              ],
+            Text(assignment.instructions,
+                style: const TextStyle(color: AppColors.textSecondary, fontFamily: 'Poppins', fontSize: 13)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Your submission',
+                hintText: 'Paste a link or describe your work...',
+                border: OutlineInputBorder(),
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SectionCard extends StatelessWidget {
-  final int index;
-  final CourseSection section;
-  final Set<String> completedVideoIds;
-  final Set<String> submittedAssignmentIds;
-  final Set<String> pendingToggles;
-  final Future<void> Function(CourseVideo) onOpenVideo;
-
-  const _SectionCard({
-    required this.index,
-    required this.section,
-    required this.completedVideoIds,
-    required this.submittedAssignmentIds,
-    required this.pendingToggles,
-    required this.onOpenVideo,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final doneCount =
-        section.videos.where((v) => completedVideoIds.contains(v.id)).length;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ExpansionTile(
-        title: Text('$index. ${section.title}'),
-        subtitle: Text('$doneCount/${section.videos.length} videos complete'),
-        children: [
-          ...section.videos.map((video) => _VideoTile(
-                video: video,
-                isCompleted: completedVideoIds.contains(video.id),
-                isPending: pendingToggles.contains(video.id),
-                onTap: () => onOpenVideo(video),
-              )),
-          ...section.assignments.map((a) => _AssignmentTile(
-                assignment: a,
-                isSubmitted: submittedAssignmentIds.contains(a.id),
-              )),
-        ],
-      ),
-    );
-  }
-}
-
-class _VideoTile extends StatelessWidget {
-  final CourseVideo video;
-  final bool isCompleted;
-  final bool isPending;
-  final VoidCallback onTap;
-
-  const _VideoTile({
-    required this.video,
-    required this.isCompleted,
-    required this.isPending,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: isPending
-          ? const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : Icon(
-              isCompleted ? Icons.check_circle : Icons.play_circle_outline,
-              color: isCompleted ? Colors.green : null,
-            ),
-      title: Text(video.title),
-      subtitle: Text(video.formattedDuration),
-      trailing: video.isPreview ? const Chip(label: Text('Preview')) : null,
-      onTap: isPending ? null : onTap,
-    );
-  }
-}
-
-class _VideoPlaybackScreen extends StatelessWidget {
-  final CourseVideo video;
-
-  const _VideoPlaybackScreen({required this.video});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(video.title)),
-      body: Column(
-        children: [
-          CourseVideoPlayer(video: video),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              video.description,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Submit'),
           ),
         ],
       ),
     );
-  }
-}
 
-class _AssignmentTile extends StatelessWidget {
-  final CourseAssignment assignment;
-  final bool isSubmitted;
-
-  const _AssignmentTile({required this.assignment, required this.isSubmitted});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(
-        isSubmitted ? Icons.assignment_turned_in : Icons.assignment_outlined,
-        color: isSubmitted ? Colors.green : null,
-      ),
-      title: Text(assignment.title),
-      subtitle: Text(isSubmitted ? 'Submitted' : 'Not submitted'),
-    );
-  }
-}
-
-class _TestUnlockCard extends StatelessWidget {
-  final VoidCallback? onTakeTest;
-
-  const _TestUnlockCard({required this.onTakeTest});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: Theme.of(context).colorScheme.primaryContainer,
-      child: ListTile(
-        leading: const Icon(Icons.quiz_outlined),
-        title: const Text('All videos complete — ready for the test'),
-        subtitle: const Text('Pass the test to earn your certificate'),
-        trailing: FilledButton(
-          onPressed: onTakeTest,
-          child: const Text('Take Test'),
-        ),
-      ),
-    );
-  }
-}
-
-class _OpportunitiesUnlockedCard extends StatelessWidget {
-  final List<InternshipOpportunity> opportunities;
-
-  const _OpportunitiesUnlockedCard({required this.opportunities});
-
-  @override
-  Widget build(BuildContext context) {
-    final active = opportunities.where((o) => !o.isExpired()).toList();
-    if (active.isEmpty) return const SizedBox.shrink();
-
-    return Card(
-      margin: const EdgeInsets.only(top: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Opportunities unlocked',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            ...active.map((o) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.work_outline),
-                  title: Text('${o.role} — ${o.companyName}'),
-                  subtitle: Text('${o.duration} · ${o.stipend}'),
-                )),
-          ],
-        ),
-      ),
-    );
+    if (result == true && controller.text.trim().isNotEmpty) {
+      await ref.read(courseProgressNotifierProvider.notifier).submitAssignment(
+            courseId: courseId,
+            assignmentId: assignment.id,
+            submissionText: controller.text.trim(),
+            attachmentUrls: [],
+            totalVideos: totalVideos,
+            totalAssignments: totalAssignments,
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Assignment submitted!'), backgroundColor: AppColors.success),
+        );
+      }
+    }
   }
 }

@@ -12,6 +12,9 @@ import '../../features/academic_hub/subject_detail_screen.dart';
 import '../../features/results/results_screen.dart';
 import '../../features/internships/internships_screen.dart';
 import '../../features/internships/internship_detail_screen.dart';
+import '../../features/internships/screens/course_detail_screen.dart';
+import '../../features/internships/screens/course_test_screen.dart';
+import '../../features/internships/screens/certificate_view_screen.dart';
 import '../../features/projects/projects_screen.dart';
 import '../../features/projects/project_detail_screen.dart';
 import '../../features/projects/upload_project_screen.dart';
@@ -33,6 +36,9 @@ class AppRoutes {
   static const results = '/results';
   static const internships = '/internships';
   static const internshipDetail = '/internships/detail';
+  static const courseDetail = '/internships/course-detail';
+  static const courseTest = '/internships/course-test';
+  static const certificateView = '/internships/certificate';
   static const projects = '/projects';
   static const projectDetail = '/projects/detail';
   static const uploadProject = '/projects/upload';
@@ -121,6 +127,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final internshipId = state.extra as String;
           return InternshipDetailScreen(internshipId: internshipId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.courseDetail,
+        builder: (context, state) {
+          final courseId = state.extra as String;
+          return CourseDetailScreen(courseId: courseId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.courseTest,
+        builder: (context, state) {
+          final courseId = state.extra as String;
+          return CourseTestScreen(courseId: courseId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.certificateView,
+        builder: (context, state) {
+          final courseId = state.extra as String;
+          return CertificateViewScreen(courseId: courseId);
         },
       ),
       GoRoute(path: AppRoutes.projects, builder: (context, state) => const ProjectsScreen()),

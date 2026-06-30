@@ -1,3 +1,8 @@
+// ============================================================
+// models/internship_models.dart
+// MyVault — Internships Module Models
+// ============================================================
+
 enum CourseStatus { notStarted, inProgress, completed, certified }
 
 enum OpportunityType { internship, job, freelance }
@@ -11,7 +16,7 @@ class InternshipCourse {
   final String subtitle;
   final String description;
   final String thumbnailUrl;
-  final String category; // e.g. "Web Dev", "Data Science", "UI/UX"
+  final String category;
   final DifficultyLevel difficulty;
   final int durationMinutes;
   final int totalVideos;
@@ -71,27 +76,6 @@ class InternshipCourse {
         isApproved: j['is_approved'] ?? false,
         createdAt: DateTime.parse(j['created_at']),
       );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'subtitle': subtitle,
-        'description': description,
-        'thumbnail_url': thumbnailUrl,
-        'category': category,
-        'difficulty': difficulty.name,
-        'duration_minutes': durationMinutes,
-        'total_videos': totalVideos,
-        'total_assignments': totalAssignments,
-        'instructor_name': instructorName,
-        'instructor_avatar': instructorAvatar,
-        'rating': rating,
-        'enrolled_count': enrolledCount,
-        'sections': sections.map((s) => s.toJson()).toList(),
-        'skills_you_learn': skillsYouLearn,
-        'is_approved': isApproved,
-        'created_at': createdAt.toIso8601String(),
-      };
 }
 
 // ─── Course Section ──────────────────────────────────────────
@@ -124,15 +108,6 @@ class CourseSection {
             .map((a) => CourseAssignment.fromJson(a))
             .toList(),
       );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'course_id': courseId,
-        'title': title,
-        'order_index': orderIndex,
-        'videos': videos.map((v) => v.toJson()).toList(),
-        'assignments': assignments.map((a) => a.toJson()).toList(),
-      };
 }
 
 // ─── Course Video ────────────────────────────────────────────
@@ -145,8 +120,8 @@ class CourseVideo {
   final String? thumbnailUrl;
   final int durationSeconds;
   final int orderIndex;
-  final bool isPreview; // free preview without enrollment
-  final List<String> resources; // downloadable resource URLs
+  final bool isPreview;
+  final List<String> resources;
 
   const CourseVideo({
     required this.id,
@@ -179,19 +154,6 @@ class CourseVideo {
         isPreview: j['is_preview'] ?? false,
         resources: List<String>.from(j['resources'] ?? []),
       );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'section_id': sectionId,
-        'title': title,
-        'description': description,
-        'video_url': videoUrl,
-        'thumbnail_url': thumbnailUrl,
-        'duration_seconds': durationSeconds,
-        'order_index': orderIndex,
-        'is_preview': isPreview,
-        'resources': resources,
-      };
 }
 
 // ─── Course Assignment ────────────────────────────────────────
@@ -232,19 +194,6 @@ class CourseAssignment {
         dueDate: j['due_date'] != null ? DateTime.parse(j['due_date']) : null,
         attachmentUrls: List<String>.from(j['attachment_urls'] ?? []),
       );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'section_id': sectionId,
-        'course_id': courseId,
-        'title': title,
-        'description': description,
-        'instructions': instructions,
-        'max_score': maxScore,
-        'order_index': orderIndex,
-        'due_date': dueDate?.toIso8601String(),
-        'attachment_urls': attachmentUrls,
-      };
 }
 
 // ─── Course Test Question ─────────────────────────────────────
@@ -253,7 +202,7 @@ class CourseTestQuestion {
   final String courseId;
   final String question;
   final List<String> options;
-  final int correctOptionIndex;
+  final int correctOptionIndex; // -1 when hidden from client
   final String? explanation;
   final int marks;
 
@@ -270,23 +219,13 @@ class CourseTestQuestion {
   factory CourseTestQuestion.fromJson(Map<String, dynamic> j) =>
       CourseTestQuestion(
         id: j['id'],
-        courseId: j['course_id'],
+        courseId: j['course_id'] ?? '',
         question: j['question'],
         options: List<String>.from(j['options']),
-        correctOptionIndex: j['correct_option_index'],
+        correctOptionIndex: j['correct_option_index'] ?? -1,
         explanation: j['explanation'],
         marks: j['marks'] ?? 1,
       );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'course_id': courseId,
-        'question': question,
-        'options': options,
-        'correct_option_index': correctOptionIndex,
-        'explanation': explanation,
-        'marks': marks,
-      };
 }
 
 // ─── Student Course Progress ──────────────────────────────────
@@ -321,9 +260,6 @@ class StudentCourseProgress {
     this.certifiedAt,
   });
 
-  double get videoProgress =>
-      completedVideoIds.isEmpty ? 0 : completedVideoIds.length.toDouble();
-
   factory StudentCourseProgress.fromJson(Map<String, dynamic> j) =>
       StudentCourseProgress(
         id: j['id'],
@@ -333,37 +269,24 @@ class StudentCourseProgress {
         submittedAssignmentIds:
             Set<String>.from(j['submitted_assignment_ids'] ?? []),
         status: CourseStatus.values.firstWhere(
-          (e) => e.name == j['status'],
-          orElse: () => CourseStatus.notStarted,
+          (e) => e.name == (j['status'] as String? ?? '').replaceAll('_', ''),
+          orElse: () {
+            // handle snake_case "not_started" -> "notStarted"
+            final raw = j['status'] as String? ?? '';
+            return CourseStatus.values.firstWhere(
+              (e) => e.name.toLowerCase() == raw.replaceAll('_', '').toLowerCase(),
+              orElse: () => CourseStatus.notStarted,
+            );
+          },
         ),
         testScore: j['test_score'],
         testMaxScore: j['test_max_score'],
         testPassed: j['test_passed'] ?? false,
-        certificateId: j['certificate_id'],
+        certificateId: j['certificate_id']?.toString(),
         enrolledAt: DateTime.parse(j['enrolled_at']),
-        completedAt: j['completed_at'] != null
-            ? DateTime.parse(j['completed_at'])
-            : null,
-        certifiedAt: j['certified_at'] != null
-            ? DateTime.parse(j['certified_at'])
-            : null,
+        completedAt: j['completed_at'] != null ? DateTime.parse(j['completed_at']) : null,
+        certifiedAt: j['certified_at'] != null ? DateTime.parse(j['certified_at']) : null,
       );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'student_id': studentId,
-        'course_id': courseId,
-        'completed_video_ids': completedVideoIds.toList(),
-        'submitted_assignment_ids': submittedAssignmentIds.toList(),
-        'status': status.name,
-        'test_score': testScore,
-        'test_max_score': testMaxScore,
-        'test_passed': testPassed,
-        'certificate_id': certificateId,
-        'enrolled_at': enrolledAt.toIso8601String(),
-        'completed_at': completedAt?.toIso8601String(),
-        'certified_at': certifiedAt?.toIso8601String(),
-      };
 }
 
 // ─── Certificate ──────────────────────────────────────────────
@@ -374,7 +297,7 @@ class CourseCertificate {
   final String hallTicketNo;
   final String courseId;
   final String courseTitle;
-  final String collegeId;
+  final String? collegeId;
   final int testScore;
   final int testMaxScore;
   final DateTime issuedAt;
@@ -388,7 +311,7 @@ class CourseCertificate {
     required this.hallTicketNo,
     required this.courseId,
     required this.courseTitle,
-    required this.collegeId,
+    this.collegeId,
     required this.testScore,
     required this.testMaxScore,
     required this.issuedAt,
@@ -396,7 +319,7 @@ class CourseCertificate {
     this.pdfUrl,
   });
 
-  double get scorePercentage => (testScore / testMaxScore) * 100;
+  double get scorePercentage => testMaxScore > 0 ? (testScore / testMaxScore) * 100 : 0;
 
   String get grade {
     final pct = scorePercentage;
@@ -411,32 +334,17 @@ class CourseCertificate {
       CourseCertificate(
         id: j['id'],
         studentId: j['student_id'],
-        studentName: j['student_name'],
-        hallTicketNo: j['hall_ticket_no'],
+        studentName: j['student_name'] ?? 'Student',
+        hallTicketNo: j['hall_ticket_no'] ?? '',
         courseId: j['course_id'],
-        courseTitle: j['course_title'],
-        collegeId: j['college_id'],
-        testScore: j['test_score'],
-        testMaxScore: j['test_max_score'],
+        courseTitle: j['course_title'] ?? '',
+        collegeId: j['college_id']?.toString(),
+        testScore: j['test_score'] ?? 0,
+        testMaxScore: j['test_max_score'] ?? 100,
         issuedAt: DateTime.parse(j['issued_at']),
-        verificationCode: j['verification_code'],
+        verificationCode: j['verification_code'] ?? '',
         pdfUrl: j['pdf_url'],
       );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'student_id': studentId,
-        'student_name': studentName,
-        'hall_ticket_no': hallTicketNo,
-        'course_id': courseId,
-        'course_title': courseTitle,
-        'college_id': collegeId,
-        'test_score': testScore,
-        'test_max_score': testMaxScore,
-        'issued_at': issuedAt.toIso8601String(),
-        'verification_code': verificationCode,
-        'pdf_url': pdfUrl,
-      };
 }
 
 // ─── Internship Opportunity ───────────────────────────────────
@@ -449,15 +357,13 @@ class InternshipOpportunity {
   final OpportunityType type;
   final String location;
   final bool isRemote;
-  final String duration; // e.g. "2 months", "6 months"
-  final String stipend; // e.g. "₹10,000/month" or "Unpaid"
+  final String duration;
+  final String stipend;
   final List<String> requiredSkills;
-  final List<String> preferredCourseIds; // courses from our platform
   final DateTime postedAt;
   final DateTime deadline;
-  final String applyUrl; // external URL
+  final String applyUrl;
   final bool isApproved;
-  final String? relatedCourseId; // if completing a course unlocks apply
 
   const InternshipOpportunity({
     required this.id,
@@ -471,22 +377,22 @@ class InternshipOpportunity {
     required this.duration,
     required this.stipend,
     required this.requiredSkills,
-    required this.preferredCourseIds,
     required this.postedAt,
     required this.deadline,
     required this.applyUrl,
     required this.isApproved,
-    this.relatedCourseId,
   });
 
   bool get isExpired => deadline.isBefore(DateTime.now());
 
+  int get daysLeft => deadline.difference(DateTime.now()).inDays;
+
   factory InternshipOpportunity.fromJson(Map<String, dynamic> j) =>
       InternshipOpportunity(
         id: j['id'],
-        companyName: j['company_name'],
+        companyName: j['company_name'] ?? '',
         companyLogoUrl: j['company_logo_url'] ?? '',
-        role: j['role'],
+        role: j['role'] ?? '',
         description: j['description'] ?? '',
         type: OpportunityType.values.firstWhere(
           (e) => e.name == j['type'],
@@ -497,33 +403,11 @@ class InternshipOpportunity {
         duration: j['duration'] ?? '',
         stipend: j['stipend'] ?? 'Unpaid',
         requiredSkills: List<String>.from(j['required_skills'] ?? []),
-        preferredCourseIds: List<String>.from(j['preferred_course_ids'] ?? []),
         postedAt: DateTime.parse(j['posted_at']),
         deadline: DateTime.parse(j['deadline']),
-        applyUrl: j['apply_url'],
+        applyUrl: j['apply_url'] ?? '',
         isApproved: j['is_approved'] ?? false,
-        relatedCourseId: j['related_course_id'],
       );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'company_name': companyName,
-        'company_logo_url': companyLogoUrl,
-        'role': role,
-        'description': description,
-        'type': type.name,
-        'location': location,
-        'is_remote': isRemote,
-        'duration': duration,
-        'stipend': stipend,
-        'required_skills': requiredSkills,
-        'preferred_course_ids': preferredCourseIds,
-        'posted_at': postedAt.toIso8601String(),
-        'deadline': deadline.toIso8601String(),
-        'apply_url': applyUrl,
-        'is_approved': isApproved,
-        'related_course_id': relatedCourseId,
-      };
 }
 
 // ─── Assignment Submission ────────────────────────────────────
@@ -538,7 +422,6 @@ class AssignmentSubmission {
   final String? feedback;
   final bool isGraded;
   final DateTime submittedAt;
-  final DateTime? gradedAt;
 
   const AssignmentSubmission({
     required this.id,
@@ -551,7 +434,6 @@ class AssignmentSubmission {
     this.feedback,
     required this.isGraded,
     required this.submittedAt,
-    this.gradedAt,
   });
 
   factory AssignmentSubmission.fromJson(Map<String, dynamic> j) =>
@@ -566,21 +448,5 @@ class AssignmentSubmission {
         feedback: j['feedback'],
         isGraded: j['is_graded'] ?? false,
         submittedAt: DateTime.parse(j['submitted_at']),
-        gradedAt:
-            j['graded_at'] != null ? DateTime.parse(j['graded_at']) : null,
       );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'student_id': studentId,
-        'assignment_id': assignmentId,
-        'course_id': courseId,
-        'submission_text': submissionText,
-        'attachment_urls': attachmentUrls,
-        'score': score,
-        'feedback': feedback,
-        'is_graded': isGraded,
-        'submitted_at': submittedAt.toIso8601String(),
-        'graded_at': gradedAt?.toIso8601String(),
-      };
 }
