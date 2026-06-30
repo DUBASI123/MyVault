@@ -4,15 +4,13 @@ import { getPresignedViewUrl, getPresignedDownloadUrl } from '../lib/s3.js';
 const router = Router();
 
 /**
- * GET /api/s3/view/*
+ * GET /api/s3/view/*path
  * Returns a fresh pre-signed S3 URL for viewing a file.
- * The Flutter app calls this and opens the returned URL in a browser/PDF viewer.
- *
- * Example: GET /api/s3/view/study-materials/uuid-DLD_notes.pdf
+ * Express v5 requires named wildcard params (*path instead of *)
  */
-router.get('/view/*', async (req, res, next) => {
+router.get('/view/*path', async (req, res, next) => {
   try {
-    const key = req.params[0];
+    const key = req.params.path;
     if (!key) return res.status(400).json({ error: 'File key is required' });
 
     const url = await getPresignedViewUrl(key);
@@ -23,14 +21,12 @@ router.get('/view/*', async (req, res, next) => {
 });
 
 /**
- * GET /api/s3/download/*
+ * GET /api/s3/download/*path
  * Returns a fresh pre-signed S3 URL that forces a file download.
- *
- * Example: GET /api/s3/download/study-materials/uuid-DLD_notes.pdf?fileName=DLD_notes.pdf
  */
-router.get('/download/*', async (req, res, next) => {
+router.get('/download/*path', async (req, res, next) => {
   try {
-    const key = req.params[0];
+    const key = req.params.path;
     const fileName = req.query.fileName || key.split('/').pop();
     if (!key) return res.status(400).json({ error: 'File key is required' });
 
@@ -42,12 +38,13 @@ router.get('/download/*', async (req, res, next) => {
 });
 
 /**
- * GET /api/s3/redirect/*
- * Directly redirects to the pre-signed S3 URL (useful for direct links in apps).
+ * GET /api/s3/redirect/*path
+ * Directly redirects to the pre-signed S3 URL.
+ * The Flutter app stores this as file_url and opens it directly.
  */
-router.get('/redirect/*', async (req, res, next) => {
+router.get('/redirect/*path', async (req, res, next) => {
   try {
-    const key = req.params[0];
+    const key = req.params.path;
     if (!key) return res.status(400).json({ error: 'File key is required' });
 
     const url = await getPresignedViewUrl(key);
