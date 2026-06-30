@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.routes.js';
 import masterRoutes from './routes/master.routes.js';
 import academicRoutes from './routes/academic.routes.js';
 import contentRoutes from './routes/content.routes.js';
+import s3Routes from './routes/s3.routes.js';
 import { getLiveStatus } from './lib/live_status.js';
 import { initSocket } from './services/socket_service.js';
 
@@ -56,6 +57,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/master', masterRoutes);
 app.use('/api/academic', academicRoutes);
 app.use('/api/content', contentRoutes);
+app.use('/api/s3', s3Routes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
