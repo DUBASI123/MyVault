@@ -98,7 +98,7 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
                             ? () => FileActionHandler.handleFileTap(
                                   context: context,
                                   fileUrl: _resolveFileUrl(r['file_url'] as String?),
-                                  fileName: r['title'] as String? ?? 'document.pdf',
+                                  fileName: _buildFileName(r),
                                 )
                             : null,
                         leading: CircleAvatar(
@@ -120,6 +120,36 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
                   },
                 ),
     );
+  }
+
+  /// Extracts extension from the file_url or file_name field and builds
+  /// a properly-named filename so FileTypeUtils can detect the correct viewer.
+  String _buildFileName(Map<String, dynamic> r) {
+    // 1. Try explicit file_name column first
+    final storedName = r['file_name'] as String? ?? r['original_file_name'] as String? ?? '';
+    if (storedName.isNotEmpty && storedName.contains('.')) return storedName;
+
+    // 2. Extract extension from the URL
+    final url = r['file_url'] as String? ?? '';
+    String ext = '';
+    try {
+      final uri = Uri.parse(url);
+      final pathParts = uri.path.split('/');
+      final lastSegment = pathParts.last.split('?').first; // strip query params
+      if (lastSegment.contains('.')) {
+        ext = '.${lastSegment.split('.').last.toLowerCase()}';
+      }
+    } catch (_) {}
+
+    // 3. Fall back to content_type hint
+    if (ext.isEmpty) {
+      final ct = r['content_type'] as String? ?? '';
+      if (ct.contains('pdf') || ct == 'slides' || ct == 'notes') ext = '.pdf';
+      if (ct == 'video') ext = '.mp4';
+    }
+
+    final title = r['title'] as String? ?? 'document';
+    return '$title$ext';
   }
 
   String _resolveFileUrl(String? url) {
