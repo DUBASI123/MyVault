@@ -1,103 +1,43 @@
-// ============================================================
-// scripts/apply_internships_schema.js
-// ============================================================
-import { PrismaClient } from '@prisma/client';
-import fs from 'fs';
-import path from 'path';
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
+import path from 'path';
+import pkg from 'pg';
+const { Client } = pkg;
+import dotenv from 'dotenv';
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function main() {
-  // Use production pooler URL from environment, or fallback to the known Supabase URL
-  const url = process.env.DATABASE_URL || "postgresql://postgres.oawomrlsitttrbulxgyk:jzqqWU5XbrckrIAD@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require";
-  
-  console.log("Connecting to Database at URL:", url.includes('@') ? url.split('@').pop() : url.substring(0, 30) + "...");
-  
-  const prisma = new PrismaClient({
-    datasources: {
-      db: { url }
-    }
-  });
+const DB_URL = process.env.DATABASE_URL_DIRECT || process.env.DATABASE_URL;
 
+async function runFile(client, filename) {
+  const sql = readFileSync(path.join(__dirname, filename), 'utf-8');
   try {
-    const sqlFilePath = path.join(__dirname, 'internships_schema.sql');
-    console.log(`Reading schema file from: ${sqlFilePath}`);
-    const sqlContent = fs.readFileSync(sqlFilePath, 'utf8');
-
-    console.log("Executing SQL schema and seed data on remote database...");
-    
-    console.log("Executing SQL schema and seed data on remote database...");
-    
-    // 1. Strip comments cleanly
-    const cleanSql = sqlContent
-      .split('\n')
-      .map(line => line.replace(/--.*/g, "")) // strip single-line comments
-      .join('\n')
-      .replace(/\/\*[\s\S]*?\*\//g, ""); // strip multi-line comments
-
-    // 2. Split statements respecting single and dollar quotes
-    const statements = [];
-    let current = [];
-    let inSingleQuote = false;
-    let inDollarQuote = false;
-
-    for (let i = 0; i < cleanSql.length; i++) {
-      const char = cleanSql[i];
-      const nextChar = cleanSql[i + 1] || '';
-
-      if (char === '$' && nextChar === '$') {
-        inDollarQuote = !inDollarQuote;
-        current.push('$$');
-        i++;
-        continue;
-      }
-
-      if (char === "'" && !inDollarQuote) {
-        if (nextChar === "'") {
-          current.push("''");
-          i++;
-          continue;
-        }
-        inSingleQuote = !inSingleQuote;
-        current.push("'");
-        continue;
-      }
-
-      if (char === ';' && !inSingleQuote && !inDollarQuote) {
-        statements.push(current.join(''));
-        current = [];
-      } else {
-        current.push(char);
-      }
-    }
-
-    if (current.length > 0) {
-      statements.push(current.join(''));
-    }
-
-    const cleanStatements = statements
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-
-    for (let i = 0; i < cleanStatements.length; i++) {
-      const stmt = cleanStatements[i];
-      try {
-        await prisma.$executeRawUnsafe(stmt);
-      } catch (err) {
-        console.error(`Error executing statement ${i + 1}:`, stmt.substring(0, 150) + "...");
-        console.error(err.message || err);
-        throw err;
-      }
-    }
-    
-    console.log("🎉 Internships schema and seed data applied successfully!");
-  } catch (error) {
-    console.error("❌ Error applying internships schema:", error);
-  } finally {
-    await prisma.$disconnect();
+    await client.query(sql);
+    console.log(`\u2705 ${filename} applied successfully!`);
+  } catch (err) {
+    console.error(`\u274c Error applying ${filename}:`, err.message);
+    throw err;
   }
 }
 
-main();
+async function main() {
+  console.log('Connecting to Supabase...');
+  const client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } });
+  await client.connect();
+  console.log('Connected!\n');
+
+  try {
+    await runFile(client, 'internships_schema.sql');
+    await runFile(client, 'placements_schema.sql');
+    console.log('\n\u2705 All schemas applied!');
+  } finally {
+    await client.end();
+  }
+}
+
+main().catch(err => {
+  console.error('Fatal error:', err);
+  process.exit(1);
+});
