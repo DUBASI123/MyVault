@@ -22,7 +22,7 @@ create table if not exists internship_courses (
   enrolled_count int default 0,
   skills_you_learn text[] default '{}',
   is_approved boolean default true,
-  created_by uuid references auth.users(id),
+  created_by uuid,
   created_at timestamptz default now()
 );
 
@@ -73,7 +73,7 @@ create table if not exists course_test_questions (
 
 create table if not exists student_course_progress (
   id uuid primary key default gen_random_uuid(),
-  student_id uuid references auth.users(id) on delete cascade,
+  student_id uuid,
   course_id uuid references internship_courses(id) on delete cascade,
   completed_video_ids uuid[] default '{}',
   submitted_assignment_ids uuid[] default '{}',
@@ -91,7 +91,7 @@ create table if not exists student_course_progress (
 
 create table if not exists assignment_submissions (
   id uuid primary key default gen_random_uuid(),
-  student_id uuid references auth.users(id) on delete cascade,
+  student_id uuid,
   assignment_id uuid references course_assignments(id) on delete cascade,
   course_id uuid references internship_courses(id) on delete cascade,
   submission_text text,
@@ -105,7 +105,7 @@ create table if not exists assignment_submissions (
 
 create table if not exists course_certificates (
   id uuid primary key default gen_random_uuid(),
-  student_id uuid references auth.users(id) on delete cascade,
+  student_id uuid,
   student_name text not null,
   hall_ticket_no text not null,
   course_id uuid references internship_courses(id) on delete cascade,
@@ -136,7 +136,7 @@ create table if not exists internship_opportunities (
   apply_url text not null,
   is_approved boolean default false,
   related_course_id uuid references internship_courses(id),
-  posted_by uuid references auth.users(id)
+  posted_by uuid
 );
 
 -- ─── Indexes ─────────────────────────────────────────────────
