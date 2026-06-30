@@ -120,8 +120,6 @@ final mlInternshipExample = InternshipOpportunity(
   duration: '3 months',
   stipend: '₹10,000/month',
   requiredSkills: const ['AI fundamentals', 'Python basics'],
-  preferredCourseIds: const ['course_ai_basics_001'],
-  relatedCourseId: 'course_ai_basics_001',
   postedAt: DateTime(2026, 6, 1),
   deadline: DateTime(2026, 8, 31),
   applyUrl: 'https://example.com/careers/ml-intern',
