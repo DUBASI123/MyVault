@@ -188,6 +188,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
             const SizedBox(height: 12),
 
+            // ── Profile Completion Score ───────────────────────────────
+            _ProfileCompletionCard(student: student)
+                .animate().fadeIn(delay: 80.ms).slideY(begin: 0.1, end: 0),
+
+            const SizedBox(height: 12),
+
             // ── Personal info ────────────────────────────────────────────────
             _section(
               'Personal Information',
@@ -226,12 +232,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               'Quick Access',
               Icons.apps_outlined,
               [
-                _navTile(Icons.workspace_premium_outlined, 'My Certificates', AppColors.academicHub, () => context.push(AppRoutes.certificates)),
-                _navTile(Icons.folder_rounded, 'Documents Hub', AppColors.certificates, () => context.push(AppRoutes.documentsHub)),
-                _navTile(Icons.work_outline_rounded, 'Internships', AppColors.internships, () => context.push(AppRoutes.internships)),
-                _navTile(Icons.emoji_events_outlined, 'Competitive Exams', AppColors.compExams, () => context.push(AppRoutes.competitiveExams)),
-                _navTile(Icons.folder_special_outlined, 'My Projects', AppColors.projects, () => context.push(AppRoutes.projects)),
-                _navTile(Icons.settings_rounded, 'Settings', AppColors.textSecondary, () => context.push(AppRoutes.settings)),
+                _navTile(Icons.workspace_premium_outlined, 'My Certificates',    AppColors.academicHub,  () => context.push(AppRoutes.certificates)),
+                _navTile(Icons.calendar_month_rounded,     'Study Planner',       const Color(0xFF6366F1), () => context.push(AppRoutes.studyPlanner)),
+                _navTile(Icons.folder_rounded,             'Documents Hub',       AppColors.certificates, () => context.push(AppRoutes.documentsHub)),
+                _navTile(Icons.work_outline_rounded,       'Internships',         AppColors.internships,  () => context.push(AppRoutes.internships)),
+                _navTile(Icons.emoji_events_outlined,      'Competitive Exams',   AppColors.compExams,    () => context.push(AppRoutes.competitiveExams)),
+                _navTile(Icons.folder_special_outlined,    'My Projects',         AppColors.projects,     () => context.push(AppRoutes.projects)),
+                _navTile(Icons.settings_rounded,           'Settings',            AppColors.textSecondary, () => context.push(AppRoutes.settings)),
               ],
             ).animate().fadeIn(delay: 300.ms, duration: 400.ms).slideY(begin: 0.1, end: 0),
 
@@ -345,3 +352,95 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// PROFILE COMPLETION CARD
+// ─────────────────────────────────────────────────────────────
+
+class _ProfileCompletionCard extends StatelessWidget {
+  final dynamic student;
+  const _ProfileCompletionCard({this.student});
+
+  @override
+  Widget build(BuildContext context) {
+    final checks = <String, bool>{
+      'Profile photo uploaded':    student?.profilePicUrl != null,
+      'Email verified':            student?.isEmailVerified == true,
+      'Mobile number verified':    student?.isMobileVerified == true,
+      'Branch filled':             (student?.branch ?? '').isNotEmpty,
+      'Semester set':              (student?.semester ?? 0) > 0,
+      'Gender added':              (student?.gender ?? '').isNotEmpty,
+      'State filled':              (student?.state ?? '').isNotEmpty,
+    };
+
+    final done  = checks.values.where((v) => v).length;
+    final total = checks.length;
+    final pct   = done / total;
+
+    final color = pct >= 0.85
+        ? AppColors.success
+        : pct >= 0.55
+            ? AppColors.warning
+            : AppColors.error;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.account_circle_rounded, color: color, size: 20),
+              const SizedBox(width: 8),
+              const Text('Profile Completion',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                      fontFamily: 'Poppins', color: AppColors.textPrimary)),
+              const Spacer(),
+              Text('${(pct * 100).toStringAsFixed(0)}%',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800,
+                      color: color, fontFamily: 'Poppins')),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: pct,
+              backgroundColor: AppColors.inputFill,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 8,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: checks.entries.map((e) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  e.value ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                  size: 14,
+                  color: e.value ? AppColors.success : AppColors.textLight,
+                ),
+                const SizedBox(width: 4),
+                Text(e.key,
+                    style: TextStyle(
+                        fontSize: 11, fontFamily: 'Poppins',
+                        color: e.value ? AppColors.textPrimary : AppColors.textSecondary,
+                        decoration: e.value ? TextDecoration.lineThrough : null)),
+              ],
+            )).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
