@@ -111,7 +111,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                               MaterialPageRoute(
                                 builder: (_) => SubmitProjectWorkScreen(
                                   projectId: widget.projectId,
-                                  projectTitle: d?['title'] ?? 'Project',
+                                  projectTitle: d['title'] ?? 'Project',
                                 ),
                               ),
                             );
