@@ -23,6 +23,7 @@ import '../../features/certificates/certificates_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/documents_hub/documents_hub_screen.dart';
+import '../../features/internships/screens/placement_desk_screen.dart';
 
 class AppRoutes {
   static const splash = '/';
@@ -47,6 +48,7 @@ class AppRoutes {
   static const profile = '/profile';
   static const settings = '/settings';
   static const documentsHub = '/documents-hub';
+  static const placementDesk = '/placement-desk';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -164,6 +166,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.profile, builder: (context, state) => const ProfileScreen()),
       GoRoute(path: AppRoutes.settings, builder: (context, state) => const SettingsScreen()),
       GoRoute(path: AppRoutes.documentsHub, builder: (context, state) => const DocumentsHubScreen()),
+      GoRoute(path: AppRoutes.placementDesk, builder: (context, state) => const PlacementDeskScreen()),
     ],
     errorBuilder: (_, state) => Scaffold(
       body: Center(child: Text('Page not found: ${state.error}')),

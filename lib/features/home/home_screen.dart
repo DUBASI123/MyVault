@@ -100,6 +100,7 @@ class _HomeTab extends StatelessWidget {
       _Module('My Results', Icons.bar_chart_rounded, AppColors.results, AppRoutes.results),
       _Module('Documents Hub', Icons.folder_rounded, AppColors.certificates, AppRoutes.documentsHub),
       _Module('Internships', Icons.work_rounded, AppColors.internships, AppRoutes.internships),
+      _Module('Placement Desk', Icons.business_center_rounded, AppColors.results, AppRoutes.placementDesk),
       _Module('Projects', Icons.code_rounded, AppColors.projects, AppRoutes.projects),
       _Module('Competitive Exams', Icons.emoji_events_rounded, AppColors.compExams, AppRoutes.competitiveExams),
       _Module('Notifications', Icons.notifications_rounded, AppColors.notifications, AppRoutes.notifications),
