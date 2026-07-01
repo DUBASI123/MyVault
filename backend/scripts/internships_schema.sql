@@ -308,16 +308,22 @@ insert into internship_courses
    instructor_avatar, rating, enrolled_count, skills_you_learn, is_approved)
 values (
   '33333333-3333-3333-3333-333333333333',
-  'UI/UX Design Internship Bootcamp',
-  'Figma to portfolio-ready case studies',
-  'Master design thinking, wireframing, and prototyping in Figma while building a portfolio piece that internship recruiters look for.',
-  'https://res.cloudinary.com/demo/image/upload/v1/courses/uiux_thumb.jpg',
+  'Mobile App UI/UX Design Course',
+  'Figma design to interactive app prototypes',
+  'Master user experience (UX) and user interface (UI) design for mobile apps. Learn wireframing, layout hierarchy, and prototyping in Figma while building a premium portfolio-ready app.',
+  'https://images.unsplash.com/photo-1618761767630-01147e551804?w=800',
   'UI/UX Design', 'beginner', 300, 8, 2,
-  'Sneha Iyer', 'https://res.cloudinary.com/demo/image/upload/v1/avatars/sneha.jpg',
+  'Sneha Iyer', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
   4.8, 730,
-  array['Figma','Wireframing','Prototyping','User Research'],
+  array['Figma','Mobile UI','Wireframing','Prototyping','User Research'],
   true
-) on conflict (id) do nothing;
+) on conflict (id) do update set
+  title = excluded.title,
+  subtitle = excluded.subtitle,
+  description = excluded.description,
+  thumbnail_url = excluded.thumbnail_url,
+  instructor_avatar = excluded.instructor_avatar,
+  skills_you_learn = excluded.skills_you_learn;
 
 insert into internship_courses
   (id, title, subtitle, description, thumbnail_url, category, difficulty,
