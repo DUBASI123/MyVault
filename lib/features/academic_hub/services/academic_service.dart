@@ -48,6 +48,7 @@ class AcademicService {
         final list = await ApiClient.getList('/academic/subjects', query: {
           'branch': branch,
           'semester': semester,
+          'subjectType': subjectType,
         });
         return list
             .map((e) => SubjectModel.fromMap(e as Map<String, dynamic>))

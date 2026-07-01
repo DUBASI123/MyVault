@@ -6,11 +6,12 @@ const router = Router();
 
 router.get('/subjects', async (req, res, next) => {
   try {
-    const { branch, semester } = req.query;
+    const { branch, semester, subjectType } = req.query;
     const data = await prisma.subject.findMany({
       where: {
         branch: String(branch),
         semester: Number(semester),
+        subjectType: subjectType ? String(subjectType) : 'academic',
       },
       orderBy: { name: 'asc' },
     });

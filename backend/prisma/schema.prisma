@@ -74,13 +74,14 @@ model Student {
 }
 
 model Subject {
-  id        String   @id @default(uuid())
-  name      String
-  code      String?
-  branch    String
-  semester  Int
-  contents  AcademicContent[]
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid())
+  name        String
+  code        String?
+  branch      String
+  semester    Int
+  subjectType String   @default("academic") @map("subject_type")
+  contents    AcademicContent[]
+  createdAt   DateTime @default(now()) @map("created_at")
 
   @@map("subjects")
 }
