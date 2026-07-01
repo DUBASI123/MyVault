@@ -145,6 +145,7 @@ class _HomeTab extends ConsumerWidget {
       _Module('Internships', Icons.work_rounded, AppColors.internships, AppRoutes.internships),
       _Module('Placement Desk', Icons.business_center_rounded, AppColors.results, AppRoutes.placementDesk),
       _Module('Projects', Icons.code_rounded, AppColors.projects, AppRoutes.projects),
+      _Module('Study Planner', Icons.calendar_month_rounded, const Color(0xFF6366F1), AppRoutes.studyPlanner),
       _Module('Competitive Exams', Icons.emoji_events_rounded, AppColors.compExams, AppRoutes.competitiveExams),
       _Module('Notifications', Icons.notifications_rounded, AppColors.notifications, AppRoutes.notifications),
       _Module('Certificates', Icons.workspace_premium_rounded, AppColors.warning, AppRoutes.certificates),
