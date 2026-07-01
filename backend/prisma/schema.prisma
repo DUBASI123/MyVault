@@ -243,3 +243,214 @@ model Admin {
   @@map("admins")
 }
 
+model InternshipCourse {
+  id               String                 @id @default(uuid()) @db.Uuid
+  title            String
+  subtitle         String?
+  description      String?
+  thumbnailUrl     String?                @map("thumbnail_url")
+  category         String
+  difficulty       String                 @default("beginner")
+  durationMinutes  Int?                   @default(0) @map("duration_minutes")
+  totalVideos      Int?                   @default(0) @map("total_videos")
+  totalAssignments Int?                   @default(0) @map("total_assignments")
+  instructorName   String?                @map("instructor_name")
+  instructorAvatar String?                @map("instructor_avatar")
+  rating           Decimal?               @default(0.0) @db.Decimal(2, 1)
+  enrolledCount    Int?                   @default(0) @map("enrolled_count")
+  skillsYouLearn   String[]               @default([]) @map("skills_you_learn")
+  isApproved       Boolean?               @default(true) @map("is_approved")
+  createdBy        String?                @map("created_by") @db.Uuid
+  createdAt        DateTime?              @default(now()) @map("created_at")
+  sections         CourseSection[]
+  videos           CourseVideo[]
+  assignments      CourseAssignment[]
+  testQuestions    CourseTestQuestion[]
+  certificates     CourseCertificate[]
+  opportunities    InternshipOpportunity[]
+
+  @@map("internship_courses")
+}
+
+model CourseSection {
+  id          String             @id @default(uuid()) @db.Uuid
+  courseId    String             @map("course_id") @db.Uuid
+  course      InternshipCourse   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  orderIndex  Int?               @default(0) @map("order_index")
+  videos      CourseVideo[]
+  assignments CourseAssignment[]
+
+  @@map("course_sections")
+}
+
+model CourseVideo {
+  id              String         @id @default(uuid()) @db.Uuid
+  sectionId       String         @map("section_id") @db.Uuid
+  section         CourseSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  courseId        String         @map("course_id") @db.Uuid
+  course          InternshipCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  videoUrl        String         @map("video_url")
+  thumbnailUrl    String?        @map("thumbnail_url")
+  durationSeconds Int?           @default(0) @map("duration_seconds")
+  orderIndex      Int?           @default(0) @map("order_index")
+  isPreview       Boolean?       @default(false) @map("is_preview")
+  resources       String[]       @default([])
+
+  @@map("course_videos")
+}
+
+model CourseAssignment {
+  id             String         @id @default(uuid()) @db.Uuid
+  sectionId      String         @map("section_id") @db.Uuid
+  section         CourseSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  courseId       String         @map("course_id") @db.Uuid
+  course         InternshipCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?
+  instructions   String?
+  maxScore       Int?           @default(100) @map("max_score")
+  orderIndex     Int?           @default(0) @map("order_index")
+  dueDate        DateTime?      @map("due_date")
+  attachmentUrls String[]       @default([]) @map("attachment_urls")
+
+  @@map("course_assignments")
+}
+
+model CourseTestQuestion {
+  id                 String           @id @default(uuid()) @db.Uuid
+  courseId           String           @map("course_id") @db.Uuid
+  course             InternshipCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  question           String
+  options            String[]
+  correctOptionIndex Int              @map("correct_option_index")
+  explanation        String?
+  marks              Int?             @default(1)
+  orderIndex         Int?             @default(0) @map("order_index")
+
+  @@map("course_test_questions")
+}
+
+model StudentCourseProgress {
+  id                     String           @id @default(uuid()) @db.Uuid
+  studentId              String           @map("student_id") @db.Uuid
+  courseId               String           @map("course_id") @db.Uuid
+  completedVideoIds      String[]         @default([]) @map("completed_video_ids") @db.Uuid
+  submittedAssignmentIds String[]         @default([]) @map("submitted_assignment_ids") @db.Uuid
+  status                 String?          @default("not_started")
+  testScore              Int?             @map("test_score")
+  testMaxScore           Int?             @map("test_max_score")
+  testPassed             Boolean?         @default(false) @map("test_passed")
+  testAttempts           Int?             @default(0) @map("test_attempts")
+  certificateId          String?          @map("certificate_id") @db.Uuid
+  enrolledAt             DateTime?        @default(now()) @map("enrolled_at")
+  completedAt            DateTime?        @map("completed_at")
+  certifiedAt            DateTime?        @map("certified_at")
+
+  @@unique([studentId, courseId])
+  @@map("student_course_progress")
+}
+
+model AssignmentSubmission {
+  id             String           @id @default(uuid()) @db.Uuid
+  studentId      String           @map("student_id") @db.Uuid
+  assignmentId   String           @map("assignment_id") @db.Uuid
+  courseId       String           @map("course_id") @db.Uuid
+  submissionText String?          @map("submission_text")
+  attachmentUrls String[]         @default([]) @map("attachment_urls")
+  score          Int?
+  feedback       String?
+  isGraded       Boolean?         @default(false) @map("is_graded")
+  submittedAt    DateTime?        @default(now()) @map("submitted_at")
+  gradedAt       DateTime?        @map("graded_at")
+
+  @@map("assignment_submissions")
+}
+
+model CourseCertificate {
+  id               String           @id @default(uuid()) @db.Uuid
+  studentId        String           @map("student_id") @db.Uuid
+  studentName      String           @map("student_name")
+  hallTicketNo     String           @map("hall_ticket_no")
+  courseId         String           @map("course_id") @db.Uuid
+  course           InternshipCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseTitle      String           @map("course_title")
+  collegeId        String?          @map("college_id") @db.Uuid
+  testScore        Int              @map("test_score")
+  testMaxScore     Int              @map("test_max_score")
+  issuedAt         DateTime?        @default(now()) @map("issued_at")
+  verificationCode String           @unique @map("verification_code")
+  pdfUrl           String?          @map("pdf_url")
+
+  @@map("course_certificates")
+}
+
+model InternshipOpportunity {
+  id                String           @id @default(uuid()) @db.Uuid
+  companyName       String           @map("company_name")
+  companyLogoUrl    String?          @map("company_logo_url")
+  role              String
+  description       String?
+  type              String?          @default("internship")
+  location          String?
+  isRemote          Boolean?         @default(false) @map("is_remote")
+  duration          String?
+  stipend           String?          @default("Unpaid")
+  requiredSkills    String[]         @default([]) @map("required_skills")
+  preferredCourseIds String[]        @default([]) @map("preferred_course_ids") @db.Uuid
+  postedAt          DateTime?        @default(now()) @map("posted_at")
+  deadline          DateTime
+  applyUrl          String           @map("apply_url")
+  isApproved        Boolean?         @default(false) @map("is_approved")
+  relatedCourseId   String?          @map("related_course_id") @db.Uuid
+  relatedCourse     InternshipCourse? @relation(fields: [relatedCourseId], references: [id])
+  postedBy          String?          @map("posted_by") @db.Uuid
+
+  @@map("internship_opportunities")
+}
+
+model PlacementJob {
+  id              String             @id @default(uuid()) @db.Uuid
+  companyName     String             @map("company_name")
+  companyLogoUrl  String?            @map("company_logo_url")
+  role            String
+  description     String?
+  jobType         String             @default("fullTime") @map("job_type")
+  workMode        String             @default("onsite") @map("work_mode")
+  experienceLevel String             @default("fresher") @map("experience_level")
+  location        String?
+  salaryRange     String?            @map("salary_range")
+  qualification   String?
+  experience      String?
+  shift           String?
+  contactInfo     String?            @map("contact_info")
+  postedBy        String?            @map("posted_by")
+  department      String?
+  skills          String[]           @default([])
+  tags            String[]           @default([])
+  applyUrl        String             @default("") @map("apply_url")
+  postedAt        DateTime           @default(now()) @map("posted_at")
+  deadline        DateTime?
+  isUrgent        Boolean            @default(false) @map("is_urgent")
+  isFeatured      Boolean            @default(false) @map("is_featured")
+  isApproved      Boolean            @default(true) @map("is_approved")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  savedJobs       StudentSavedJob[]
+
+  @@map("placement_jobs")
+}
+
+model StudentSavedJob {
+  id        String       @id @default(uuid()) @db.Uuid
+  studentId String       @map("student_id")
+  jobId     String       @map("job_id") @db.Uuid
+  job       PlacementJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  savedAt   DateTime     @default(now()) @map("saved_at")
+
+  @@unique([studentId, jobId])
+  @@map("student_saved_jobs")
+}
+
+
