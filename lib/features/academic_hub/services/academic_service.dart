@@ -22,6 +22,7 @@ class AcademicService {
   static Future<List<SubjectModel>> getSubjects({
     required String branch,
     required int semester,
+    String subjectType = 'academic',
   }) async {
     // Try Supabase first (no cold starts, fast response)
     if (SupabaseService.isAvailable) {
@@ -31,6 +32,7 @@ class AcademicService {
             .select()
             .eq('branch', branch)
             .eq('semester', semester)
+            .eq('subject_type', subjectType)
             .order('name');
         return (response as List)
             .map((e) => SubjectModel.fromMap(e as Map<String, dynamic>))

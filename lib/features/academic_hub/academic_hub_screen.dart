@@ -52,8 +52,11 @@ class AcademicHubScreen extends ConsumerStatefulWidget {
 class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List<SubjectModel> _subjects = [];
-  bool _loadingSubjects = true;
+  List<SubjectModel> _academicSubjects = [];
+  List<SubjectModel> _techSubjects = [];
+  List<SubjectModel> _examSubjects = [];
+  List<SubjectModel> _commSubjects = [];
+  bool _loading = true;
   String? _loadedBranch;
   int? _loadedSemester;
 
@@ -67,8 +70,7 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
   void _initSemester() {
     final student = ref.read(currentStudentProvider);
     if (student != null) {
-      // Set initial year and semester from student registration
-      final sem = student.semester; // int
+      final sem = student.semester;
       final year = ((sem - 1) ~/ 2) + 1;
       ref.read(academicYearProvider.notifier).state = year;
       ref.read(academicSemesterProvider.notifier).state = sem;
@@ -81,21 +83,30 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
     final semester = ref.read(academicSemesterProvider);
     if (student == null) return;
 
-    // Avoid reload if same
     if (_loadedBranch == student.branch && _loadedSemester == semester) return;
 
-    setState(() => _loadingSubjects = true);
-    final list = await AcademicService.getSubjects(
-      branch: student.branch,
-      semester: semester,
-    );
-    if (mounted) {
-      setState(() {
-        _subjects = list;
-        _loadingSubjects = false;
-        _loadedBranch = student.branch;
-        _loadedSemester = semester;
-      });
+    setState(() => _loading = true);
+    try {
+      final results = await Future.wait([
+        AcademicService.getSubjects(branch: student.branch, semester: semester, subjectType: 'academic'),
+        AcademicService.getSubjects(branch: student.branch, semester: semester, subjectType: 'tech_skill'),
+        AcademicService.getSubjects(branch: student.branch, semester: semester, subjectType: 'exam_prep'),
+        AcademicService.getSubjects(branch: student.branch, semester: semester, subjectType: 'comm_skill'),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _academicSubjects = results[0];
+          _techSubjects = results[1];
+          _examSubjects = results[2];
+          _commSubjects = results[3];
+          _loading = false;
+          _loadedBranch = student.branch;
+          _loadedSemester = semester;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -127,13 +138,11 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
             onNotificationTap: () => context.push(AppRoutes.notifications),
           ),
 
-          // ── Year & Semester Selector ───────────────────────────────────────
           _YearSemesterSelector(
             selectedYear: selectedYear,
             selectedSemester: selectedSemester,
             onYearChanged: (y) {
               ref.read(academicYearProvider.notifier).state = y;
-              // Set first semester of that year by default
               final sems = _semestersForYear(y);
               ref.read(academicSemesterProvider.notifier).state = sems[0];
               _loadedSemester = null;
@@ -147,7 +156,6 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
             semestersForYear: _semestersForYear,
           ),
 
-          // ── Tabs ─────────────────────────────────────────────────────────
           Material(
             color: AppColors.surface,
             child: TabBar(
@@ -182,24 +190,30 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
     );
   }
 
-  // ── Subjects Tab ─────────────────────────────────────────────────────────────
-  Widget _subjectsTab(int semester, dynamic student) {
+  Widget _buildSubjectsTab({
+    required int semester,
+    required dynamic student,
+    required List<SubjectModel> subjectsList,
+    required String emptyTitle,
+    required String emptySubtitle,
+    required IconData emptyIcon,
+    required Color colorTheme,
+  }) {
     return Column(
       children: [
-        // Batch info bar
         if (student != null)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: AppColors.academicHub.withValues(alpha: 0.06),
+            color: colorTheme.withValues(alpha: 0.06),
             child: Row(
               children: [
-                const Icon(Icons.school_rounded, size: 14, color: AppColors.academicHub),
+                Icon(Icons.school_rounded, size: 14, color: colorTheme),
                 const SizedBox(width: 6),
                 Text(
                   '${student.branch} • Semester $semester • ${student.course}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: AppColors.academicHub,
+                    color: colorTheme,
                     fontWeight: FontWeight.w600,
                     fontFamily: 'Poppins',
                   ),
@@ -208,21 +222,33 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
             ),
           ),
         Expanded(
-          child: _loadingSubjects
+          child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : _subjects.isEmpty
-                  ? _emptySubjects(semester)
+              : subjectsList.isEmpty
+                  ? _emptySubjects(semester, emptyTitle, emptySubtitle, emptyIcon, colorTheme)
                   : ListView.builder(
                       padding: const EdgeInsets.all(16),
-                      itemCount: _subjects.length,
-                      itemBuilder: (_, i) => _subjectCard(_subjects[i], i),
+                      itemCount: subjectsList.length,
+                      itemBuilder: (_, i) => _subjectCard(subjectsList[i], i),
                     ),
         ),
       ],
     );
   }
 
-  Widget _emptySubjects(int semester) {
+  Widget _subjectsTab(int semester, dynamic student) {
+    return _buildSubjectsTab(
+      semester: semester,
+      student: student,
+      subjectsList: _academicSubjects,
+      emptyTitle: 'No subjects for Semester $semester',
+      emptySubtitle: 'Content is being curated.\nCheck back soon!',
+      emptyIcon: Icons.menu_book_rounded,
+      colorTheme: AppColors.academicHub,
+    );
+  }
+
+  Widget _emptySubjects(int semester, String title, String subtitle, IconData icon, Color color) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -230,21 +256,21 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.academicHub.withValues(alpha: 0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.menu_book_rounded, size: 48, color: AppColors.academicHub),
+            child: Icon(icon, size: 48, color: color),
           ),
           const SizedBox(height: 16),
           Text(
-            'No subjects for Semester $semester',
+            title,
             style: AppTextStyles.heading3.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Content is being curated.\nCheck back soon!',
+          Text(
+            subtitle,
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textLight, fontFamily: 'Poppins', fontSize: 12),
+            style: const TextStyle(color: AppColors.textLight, fontFamily: 'Poppins', fontSize: 12),
           ),
         ],
       ),
@@ -332,7 +358,6 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
   Widget _contentChip(_ContentType ct, SubjectModel subject) {
     return GestureDetector(
       onTap: () {
-        // Navigate to subject detail with content type pre-selected
         context.push(AppRoutes.subjectDetail, extra: {
           'subjectId': subject.id,
           'categoryName': ct.name,
@@ -367,174 +392,47 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
     );
   }
 
-  // ── Tech Skills Tab ──────────────────────────────────────────────────────────
   Widget _techTab() {
-    final techSubjects = [
-      _TechSubject('Java Programming', Icons.coffee_rounded, const Color(0xFFFF6B35)),
-      _TechSubject('Python Programming', Icons.code_rounded, const Color(0xFF3B82F6)),
-      _TechSubject('Web Development', Icons.web_rounded, const Color(0xFF2ECC71)),
-      _TechSubject('Flutter / Dart', Icons.flutter_dash_rounded, const Color(0xFF6C63FF)),
-      _TechSubject('Data Structures', Icons.account_tree_outlined, const Color(0xFF9B59B6)),
-      _TechSubject('Database (SQL)', Icons.storage_rounded, const Color(0xFFE67E22)),
-      _TechSubject('Machine Learning', Icons.psychology_rounded, const Color(0xFF00C2A8)),
-    ];
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: techSubjects
-          .asMap()
-          .entries
-          .map(
-            (entry) => Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: entry.value.color.withValues(alpha: 0.2)),
-              ),
-              child: Theme(
-                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: entry.value.color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(entry.value.icon, color: entry.value.color, size: 20),
-                  ),
-                  title: Text(entry.value.name, style: AppTextStyles.heading3),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                      child: GridView.count(
-                        crossAxisCount: 3,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        mainAxisSpacing: 8,
-                        crossAxisSpacing: 8,
-                        childAspectRatio: 1.4,
-                        children: ['Video Lectures', 'Notes', 'Quiz', 'Mock Test', 'Interview Qs', 'Projects']
-                            .map((label) => Container(
-                                  decoration: BoxDecoration(
-                                    color: entry.value.color.withValues(alpha: 0.07),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: entry.value.color.withValues(alpha: 0.2)),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      label,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(fontSize: 10, color: entry.value.color, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
-                                    ),
-                                  ),
-                                ))
-                            .toList(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-                .animate(delay: Duration(milliseconds: entry.key * 60))
-                .fadeIn(duration: 300.ms)
-                .slideY(begin: 0.1, end: 0),
-          )
-          .toList(),
+    final student = ref.watch(currentStudentProvider);
+    final selectedSemester = ref.watch(academicSemesterProvider);
+    return _buildSubjectsTab(
+      semester: selectedSemester,
+      student: student,
+      subjectsList: _techSubjects,
+      emptyTitle: 'No tech skills for Semester $selectedSemester',
+      emptySubtitle: 'Premium tech skill courses are being curated.\nCheck back soon!',
+      emptyIcon: Icons.code_rounded,
+      colorTheme: const Color(0xFF6C63FF),
     );
   }
 
-  // ── Exam Prep Tab ────────────────────────────────────────────────────────────
   Widget _examPrepTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _examSection('Aptitude & Reasoning', Icons.psychology_outlined, AppColors.compExams, [
-          'Quantitative Aptitude',
-          'Logical Reasoning',
-          'Verbal Ability',
-          'Data Interpretation',
-        ]),
-        const SizedBox(height: 12),
-        _examSection('Competitive Exams', Icons.emoji_events_outlined, AppColors.warning, [
-          'GATE Preparation',
-          'GRE / GMAT',
-          'CAT / MBA',
-          'UPSC / PSC',
-        ]),
-        const SizedBox(height: 12),
-        _examSection('Placement Prep', Icons.work_outlined, AppColors.internships, [
-          'Resume Writing',
-          'HR Questions',
-          'Technical Questions',
-          'Group Discussion Tips',
-        ]),
-      ],
+    final student = ref.watch(currentStudentProvider);
+    final selectedSemester = ref.watch(academicSemesterProvider);
+    return _buildSubjectsTab(
+      semester: selectedSemester,
+      student: student,
+      subjectsList: _examSubjects,
+      emptyTitle: 'No exam prep materials for Semester $selectedSemester',
+      emptySubtitle: 'Quantitative aptitude, logical reasoning, and GATE prep files are being curated.\nCheck back soon!',
+      emptyIcon: Icons.psychology_outlined,
+      colorTheme: AppColors.compExams,
     );
   }
 
-  Widget _examSection(String title, IconData icon, Color color, List<String> items) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          leading: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          title: Text(title, style: AppTextStyles.heading3),
-          initiallyExpanded: true,
-          children: items.map((item) => ListTile(
-            leading: const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textSecondary),
-            title: Text(item, style: AppTextStyles.bodyMedium),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: AppColors.textSecondary),
-            dense: true,
-            onTap: () {},
-          )).toList(),
-        ),
-      ),
-    );
-  }
-
-  // ── Comm Skills Tab ──────────────────────────────────────────────────────────
   Widget _commTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _examSection('Communication Skills', Icons.record_voice_over_outlined, AppColors.notifications, [
-          'Business English',
-          'Public Speaking',
-          'Email Writing',
-          'Presentation Skills',
-        ]),
-        const SizedBox(height: 12),
-        _examSection('Soft Skills', Icons.handshake_outlined, AppColors.success, [
-          'Team Collaboration',
-          'Leadership Skills',
-          'Time Management',
-          'Problem Solving',
-        ]),
-      ],
+    final student = ref.watch(currentStudentProvider);
+    final selectedSemester = ref.watch(academicSemesterProvider);
+    return _buildSubjectsTab(
+      semester: selectedSemester,
+      student: student,
+      subjectsList: _commSubjects,
+      emptyTitle: 'No comm skills materials for Semester $selectedSemester',
+      emptySubtitle: 'Business communication and soft skills resources are being curated.\nCheck back soon!',
+      emptyIcon: Icons.record_voice_over_outlined,
+      colorTheme: AppColors.notifications,
     );
   }
-}
-
-// ─── Helper classes ──────────────────────────────────────────────────────────
-
-class _TechSubject {
-  final String name;
-  final IconData icon;
-  final Color color;
-  _TechSubject(this.name, this.icon, this.color);
 }
 
 // ─── Year Semester Selector ──────────────────────────────────────────────────

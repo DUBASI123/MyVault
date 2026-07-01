@@ -4,6 +4,7 @@ class SubjectModel {
   final String? code;
   final String branch;
   final int semester;
+  final String subjectType;
 
   SubjectModel({
     required this.id,
@@ -11,6 +12,7 @@ class SubjectModel {
     this.code,
     required this.branch,
     required this.semester,
+    this.subjectType = 'academic',
   });
 
   factory SubjectModel.fromMap(Map<String, dynamic> map) {
@@ -20,6 +22,7 @@ class SubjectModel {
       code: map['code'],
       branch: map['branch'] ?? '',
       semester: map['semester'] ?? 1,
+      subjectType: map['subject_type'] ?? 'academic',
     );
   }
 }

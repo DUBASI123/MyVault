@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import 'submit_project_work_screen.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final String projectId;
@@ -104,7 +105,17 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                         width: double.infinity,
                         height: 54,
                         child: ElevatedButton.icon(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => SubmitProjectWorkScreen(
+                                  projectId: widget.projectId,
+                                  projectTitle: d?['title'] ?? 'Project',
+                                ),
+                              ),
+                            );
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.projects,
                             foregroundColor: Colors.white,
