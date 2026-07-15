@@ -162,8 +162,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         state: _state ?? '',
         isMobileVerified: true,
         isEmailVerified: true,
-        verificationStatus: 'Pending',
-        isVerified: false,
+        verificationStatus: 'Approved',
+        isVerified: true,
         createdAt: DateTime.now(),
       );
       await ref.read(authRepositoryProvider).register(

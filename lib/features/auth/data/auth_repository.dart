@@ -109,15 +109,6 @@ class AuthRepository {
         await SupabaseService.signOut();
         throw Exception('Student profile not found. Please contact support.');
       }
-      if (!student.isVerified) {
-        await SupabaseService.signOut();
-        _ref.read(currentStudentProvider.notifier).clear();
-        throw PendingVerificationException(
-          collegeName: student.collegeName.isNotEmpty ? student.collegeName : 'your college',
-          status: student.verificationStatus,
-          rejectionReason: student.rejectionReason,
-        );
-      }
       return student;
     } on AuthException catch (e) {
       // Map raw Supabase auth errors to user-friendly messages
@@ -179,8 +170,8 @@ class AuthRepository {
         'is_email_verified': student.isEmailVerified,
         'profile_pic_url': profilePicUrl,
         'id_card_url': idCardUrl,
-        'verification_status': 'Pending',
-        'is_verified': false,
+        'verification_status': 'Approved',
+        'is_verified': true,
       });
 
       // Force sign out immediately after registration to destroy session and prevent automatic dashboard entry
@@ -191,8 +182,8 @@ class AuthRepository {
         id: user.id,
         profilePicUrl: profilePicUrl,
         idCardUrl: idCardUrl,
-        verificationStatus: 'Pending',
-        isVerified: false,
+        verificationStatus: 'Approved',
+        isVerified: true,
       );
     } on AuthException catch (e) {
       final msg = e.message.toLowerCase();
@@ -203,8 +194,7 @@ class AuthRepository {
       } else if (msg.contains('already registered') || msg.contains('user_already_exists')) {
         throw Exception(
           'This email is already registered.\n\n'
-          '👉 If you have already registered, please wait for college administrator approval before logging in. '
-          'If you believe this is an error, please contact support.'
+          '👉 Please proceed directly to the Login page to sign in with your credentials.'
         );
       } else {
         throw Exception('Registration failed: ${e.message}');
