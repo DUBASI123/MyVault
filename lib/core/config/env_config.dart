@@ -20,17 +20,6 @@ class EnvConfig {
     defaultValue: 'myvault_unsigned',
   );
 
-  static const apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'https://myvault-jbd7.onrender.com/api',
-  );
-
-  /// Treat emulator/local backend as live when true.
-  static const useLocalBackend = bool.fromEnvironment(
-    'USE_LOCAL_BACKEND',
-    defaultValue: false,
-  );
-
   /// Live mode — no mock login/demo data (default: on).
   static const isLiveMode = bool.fromEnvironment(
     'LIVE_MODE',
@@ -42,12 +31,6 @@ class EnvConfig {
 
   static bool get isFirebaseConfigured => false;
 
-  static bool get isBackendConfigured {
-    if (!useLocalBackend) return false;
-    final url = apiBaseUrl.toLowerCase();
-    return url.isNotEmpty;
-  }
-
-  static bool get isLiveOtpReady =>
-      isBackendConfigured || isFirebaseConfigured || isSupabaseConfigured;
+  static bool get isLiveOtpReady => isFirebaseConfigured || isSupabaseConfigured;
 }
+
