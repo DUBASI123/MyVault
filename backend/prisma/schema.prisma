@@ -453,4 +453,102 @@ model StudentSavedJob {
   @@map("student_saved_jobs")
 }
 
+enum ExamContentType {
+  recorded_video  @map("recorded_video")
+  study_material  @map("study_material")
+  quiz
+  mock_test       @map("mock_test")
+  previous_paper  @map("previous_paper")
+  cheat_sheet     @map("cheat_sheet")
+
+  @@map("exam_content_type")
+}
+
+model Exam {
+  id          String               @id
+  name        String
+  fullName    String               @map("full_name")
+  description String?
+  sortOrder   Int                  @default(0) @map("sort_order")
+  contents    ExamContent[]
+  rotation    ExamRotationConfig?
+  govtJobs    GovtJob[]
+
+  @@map("exams")
+}
+
+model ExamContent {
+  id               String          @id @default(uuid()) @db.Uuid
+  examId           String          @map("exam_id")
+  exam             Exam            @relation(fields: [examId], references: [id], onDelete: Cascade)
+  contentType      ExamContentType @map("content_type")
+  title            String
+  description      String?
+  topic            String?
+  fileUrl          String?         @map("file_url")
+  externalLink     String?         @map("external_link")
+  year             Int?
+  durationSeconds  Int?            @map("duration_seconds")
+  questionCount    Int?            @map("question_count")
+  timeLimitMinutes Int?            @map("time_limit_minutes")
+  rotationIndex    Int?            @map("rotation_index")
+  isDaily          Boolean         @default(false) @map("is_daily")
+  isMonthly        Boolean         @default(false) @map("is_monthly")
+  isActive         Boolean         @default(true) @map("is_active")
+  createdAt        DateTime        @default(now()) @map("created_at")
+
+  @@map("exam_content")
+}
+
+model ExamRotationConfig {
+  examId            String   @id @map("exam_id")
+  exam              Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  quizRotationStart DateTime @default(dbgenerated("'2026-07-01'::date")) @map("quiz_rotation_start") @db.Date
+  mockRotationStart DateTime @default(dbgenerated("'2026-07-01'::date")) @map("mock_rotation_start") @db.Date
+
+  @@map("exam_rotation_config")
+}
+
+enum GovtJobSector {
+  banking
+  railways
+  defence
+  police
+  teaching
+  central_civil_services @map("central_civil_services")
+  state_psc             @map("state_psc")
+  psu_technical          @map("psu_technical")
+  healthcare
+  judiciary
+  postal
+  insurance
+  other
+
+  @@map("govt_job_sector")
+}
+
+model GovtJob {
+  id            String        @id @default(uuid()) @db.Uuid
+  title         String
+  organization  String
+  sector        GovtJobSector
+  location      String?
+  mode          String        @default("Online")
+  eligibility   String?
+  experience    String?       @default("Fresher")
+  vacancies     Int?
+  salary        String?
+  applyDeadline DateTime?     @map("apply_deadline") @db.Date
+  testDate      DateTime?     @map("test_date") @db.Date
+  applyLink     String        @map("apply_link")
+  prepExamId    String?       @map("prep_exam_id")
+  prepExam      Exam?         @relation(fields: [prepExamId], references: [id], onDelete: SetNull)
+  postedDate    DateTime      @default(now()) @map("posted_date") @db.Date
+  isActive      Boolean       @default(true) @map("is_active")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  @@map("govt_jobs")
+}
+
+
 
