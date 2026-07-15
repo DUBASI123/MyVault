@@ -1,0 +1,348 @@
+{
+  "gate": {
+    "recordedVideos": [
+      "Engineering Mathematics 01 — Linear Algebra: Matrices & Eigenvalues",
+      "Engineering Mathematics 02 — Calculus: Limits, Continuity, Differentiability",
+      "Engineering Mathematics 03 — Differential Equations",
+      "Engineering Mathematics 04 — Probability & Statistics",
+      "Engineering Mathematics 05 — Numerical Methods",
+      "General Aptitude 01 — Verbal Ability",
+      "General Aptitude 02 — Numerical Ability",
+      "Branch Core 01 — Foundations (auto-selected by student's branch)",
+      "Branch Core 02 — Advanced Topics (auto-selected by student's branch)",
+      "Previous Year Paper Walkthrough — Full Solve, Last Attempted Year"
+    ],
+    "studyMaterial": [
+      "Linear Algebra — Chapter Notes",
+      "Calculus — Chapter Notes",
+      "Differential Equations — Chapter Notes",
+      "Probability & Statistics — Chapter Notes",
+      "Numerical Methods — Chapter Notes",
+      "General Aptitude — Verbal & Numerical Notes",
+      "Branch Core Subject Notes (per selected branch)",
+      "GATE Syllabus & Weightage Analysis (topic-wise marks distribution)"
+    ],
+    "quizRotation": {
+      "cycleLengthDays": 15,
+      "items": [
+        "Linear Algebra Quiz", "Calculus Quiz", "Differential Equations Quiz",
+        "Probability & Statistics Quiz", "Numerical Methods Quiz",
+        "Verbal Ability Quiz", "Numerical Ability Quiz",
+        "Branch Core Quiz — Set 1", "Branch Core Quiz — Set 2", "Branch Core Quiz — Set 3",
+        "Mixed Engineering Math Quiz", "Data Structures & Algorithms Quiz (CS/IT)",
+        "Digital Logic Quiz (CS/EC)", "Previous Year Repeat-Question Quiz",
+        "Full Syllabus Rapid-Fire Quiz"
+      ]
+    },
+    "mockTestRotation": {
+      "cycleLengthMonths": 6,
+      "items": [
+        "GATE Full Mock 1 — Diagnostic (65 Qs / 100 marks / 3 hrs)",
+        "GATE Full Mock 2 — Mathematics Heavy",
+        "GATE Full Mock 3 — Branch Core Heavy",
+        "GATE Full Mock 4 — Mixed Difficulty",
+        "GATE Full Mock 5 — Previous Year Pattern Replica",
+        "GATE Full Mock 6 — Final Revision Test"
+      ]
+    },
+    "previousPapers": [
+      { "year": 2025, "source": "https://gate.iitkgp.ac.in/old_question_papers.html" },
+      { "year": 2024, "source": "https://gate.iitkgp.ac.in/old_question_papers.html" },
+      { "year": 2023, "source": "https://gate.iitkgp.ac.in/old_question_papers.html" },
+      { "year": 2022, "source": "https://gate.iitkgp.ac.in/old_question_papers.html" },
+      { "year": 2021, "source": "https://gate.iitkgp.ac.in/old_question_papers.html" },
+      { "year": 2020, "source": "https://gate.iitkgp.ac.in/old_question_papers.html" }
+    ],
+    "cheatSheets": [
+      "Engineering Mathematics Formula Sheet",
+      "Branch Core Quick Revision Sheet",
+      "GATE Exam Pattern & Marking Scheme Card",
+      "Last-Week Revision Checklist",
+      "Common Mistakes & Negative Marking Traps"
+    ]
+  },
+
+  "gre": {
+    "recordedVideos": [
+      "Verbal 01 — Text Completion Strategy",
+      "Verbal 02 — Sentence Equivalence Strategy",
+      "Verbal 03 — Reading Comprehension Approach",
+      "Quant 01 — Arithmetic & Number Properties",
+      "Quant 02 — Algebra & Inequalities",
+      "Quant 03 — Geometry",
+      "Quant 04 — Data Analysis & Interpretation",
+      "AWA 01 — Issue Essay Structure",
+      "AWA 02 — Argument Essay Structure",
+      "Vocabulary Builder — High Frequency Word Sets"
+    ],
+    "studyMaterial": [
+      "Text Completion & Sentence Equivalence Notes",
+      "Reading Comprehension Strategy Notes",
+      "Quant — Arithmetic & Algebra Notes",
+      "Quant — Geometry & Data Analysis Notes",
+      "AWA — Issue Task Templates",
+      "AWA — Argument Task Templates",
+      "High-Frequency Vocabulary List (500 words)",
+      "GRE Score Scale & Percentile Guide"
+    ],
+    "quizRotation": {
+      "cycleLengthDays": 12,
+      "items": [
+        "Text Completion Quiz", "Sentence Equivalence Quiz", "Reading Comprehension Quiz",
+        "Arithmetic Quiz", "Algebra Quiz", "Geometry Quiz", "Data Analysis Quiz",
+        "Vocabulary Flash Quiz — Set 1", "Vocabulary Flash Quiz — Set 2",
+        "Mixed Verbal Quiz", "Mixed Quant Quiz", "Full Syllabus Rapid-Fire Quiz"
+      ]
+    },
+    "mockTestRotation": {
+      "cycleLengthMonths": 4,
+      "items": [
+        "GRE Full Mock 1 — Diagnostic (3 hr 45 min)",
+        "GRE Full Mock 2 — Verbal Heavy",
+        "GRE Full Mock 3 — Quant Heavy",
+        "GRE Full Mock 4 — Final Revision Test"
+      ]
+    },
+    "previousPapers": [
+      { "note": "Official GRE sample questions & practice tests (POWERPREP)", "source": "https://www.ets.org/gre/test-takers/general-test/prepare.html" }
+    ],
+    "cheatSheets": [
+      "Quant Formula Sheet",
+      "Top 500 GRE Vocabulary Words",
+      "Issue Essay Template",
+      "Argument Essay Template",
+      "Time Management Strategy Card"
+    ]
+  },
+
+  "cat": {
+    "recordedVideos": [
+      "VARC 01 — Reading Comprehension Strategy",
+      "VARC 02 — Verbal Reasoning (Para Jumbles, Summary)",
+      "DILR 01 — Data Interpretation Sets",
+      "DILR 02 — Logical Reasoning Puzzles",
+      "QA 01 — Arithmetic",
+      "QA 02 — Algebra",
+      "QA 03 — Geometry & Mensuration",
+      "QA 04 — Number Systems",
+      "Time Management & Section-Order Strategy",
+      "Previous Year Paper Walkthrough — Full Solve"
+    ],
+    "studyMaterial": [
+      "VARC — Reading Comprehension Notes",
+      "VARC — Verbal Reasoning Notes",
+      "DILR — Data Interpretation Notes",
+      "DILR — Logical Reasoning Notes",
+      "QA — Arithmetic Notes",
+      "QA — Algebra Notes",
+      "QA — Geometry & Mensuration Notes",
+      "QA — Number Systems Notes",
+      "CAT Syllabus & Sectional Weightage Guide"
+    ],
+    "quizRotation": {
+      "cycleLengthDays": 15,
+      "items": [
+        "Reading Comprehension Quiz", "Verbal Reasoning Quiz",
+        "Data Interpretation Quiz", "Logical Reasoning Quiz",
+        "Arithmetic Quiz", "Algebra Quiz", "Geometry & Mensuration Quiz", "Number Systems Quiz",
+        "VARC Mixed Quiz", "DILR Mixed Quiz", "QA Mixed Quiz",
+        "Percentages & Profit-Loss Quiz", "Time-Speed-Distance Quiz",
+        "Previous Year Repeat-Pattern Quiz", "Full Syllabus Rapid-Fire Quiz"
+      ]
+    },
+    "mockTestRotation": {
+      "cycleLengthMonths": 8,
+      "items": [
+        "CAT Full Mock 1 — Diagnostic (3 hrs, 66 Qs)",
+        "CAT Full Mock 2 — VARC Heavy",
+        "CAT Full Mock 3 — DILR Heavy",
+        "CAT Full Mock 4 — QA Heavy",
+        "CAT Full Mock 5 — Mixed Difficulty",
+        "CAT Full Mock 6 — Previous Year Pattern Replica",
+        "CAT Full Mock 7 — Speed Test (compressed time)",
+        "CAT Full Mock 8 — Final Revision Test"
+      ]
+    },
+    "previousPapers": [
+      { "note": "CAT previous year papers & official mock test (IIM CAT)", "source": "https://iimcat.ac.in" }
+    ],
+    "cheatSheets": [
+      "QA Formula Sheet",
+      "DILR Approach Cheat Sheet",
+      "VARC Para Jumble Tricks",
+      "Percentile Calculator Reference",
+      "Section-Order Strategy Card"
+    ]
+  },
+
+  "bank_exams": {
+    "recordedVideos": [
+      "Quant 01 — Simplification & Approximation",
+      "Quant 02 — Number Series",
+      "Quant 03 — Data Interpretation",
+      "Reasoning 01 — Puzzles & Seating Arrangement",
+      "Reasoning 02 — Syllogism",
+      "Reasoning 03 — Blood Relations & Coding-Decoding",
+      "English 01 — Reading Comprehension & Cloze Test",
+      "English 02 — Error Spotting & Para Jumbles",
+      "Banking Awareness — RBI, Monetary Policy, Banking Terms",
+      "Computer Aptitude — Fundamentals for Mains"
+    ],
+    "studyMaterial": [
+      "Quant — Simplification & Number Series Notes",
+      "Quant — Data Interpretation Notes",
+      "Reasoning — Puzzles & Seating Arrangement Notes",
+      "Reasoning — Syllogism, Blood Relations, Coding Notes",
+      "English — Grammar & Comprehension Notes",
+      "Banking & General Awareness Notes",
+      "Computer Aptitude Notes",
+      "IBPS/SBI Syllabus & Exam Pattern Guide"
+    ],
+    "quizRotation": {
+      "cycleLengthDays": 15,
+      "items": [
+        "Simplification Quiz", "Number Series Quiz", "Data Interpretation Quiz",
+        "Puzzles & Seating Arrangement Quiz", "Syllogism Quiz", "Blood Relations Quiz", "Coding-Decoding Quiz",
+        "Reading Comprehension Quiz", "Cloze Test Quiz", "Error Spotting Quiz", "Para Jumbles Quiz",
+        "Banking Awareness Quiz", "Current Affairs Quiz", "Computer Aptitude Quiz",
+        "Full Syllabus Rapid-Fire Quiz"
+      ]
+    },
+    "mockTestRotation": {
+      "cycleLengthMonths": 6,
+      "items": [
+        "IBPS PO Prelims Full Mock (100 Qs / 60 min)",
+        "IBPS PO Mains Full Mock",
+        "SBI PO Prelims Full Mock",
+        "IBPS Clerk Prelims Full Mock",
+        "IBPS Clerk Mains Full Mock",
+        "Mixed Bank Exam Final Revision Mock"
+      ]
+    },
+    "previousPapers": [
+      { "note": "IBPS PO/Clerk and SBI PO previous year & memory-based papers with solutions", "source": "https://www.ibps.in" }
+    ],
+    "cheatSheets": [
+      "Quant Shortcut Formula Sheet",
+      "Banking Awareness Quick Revision Card",
+      "Reasoning Puzzle-Solving Tricks Sheet",
+      "Important Banking Committees & Static GK Card",
+      "Exam-Day Time Management Card"
+    ]
+  },
+
+  "tspsc": {
+    "recordedVideos": [
+      "Indian History — Ancient to Modern",
+      "Telangana Movement & State Formation",
+      "Indian Polity — Constitution & Governance",
+      "Geography — India & Telangana",
+      "Indian Economy — Basics & Telangana Economy",
+      "General Science & Environment",
+      "Telangana State Government Schemes",
+      "Current Affairs — Monthly Digest",
+      "Aptitude & Reasoning for TSPSC",
+      "Previous Year Paper Walkthrough — Full Solve"
+    ],
+    "studyMaterial": [
+      "Indian History Notes",
+      "Telangana Movement & History Notes",
+      "Indian Polity Notes",
+      "Geography (India & Telangana) Notes",
+      "Indian & Telangana Economy Notes",
+      "General Science & Environment Notes",
+      "Telangana Government Schemes Notes",
+      "Aptitude & Reasoning Notes",
+      "TSPSC Syllabus & Post-wise Pattern Guide"
+    ],
+    "quizRotation": {
+      "cycleLengthDays": 15,
+      "items": [
+        "Indian History Quiz", "Telangana Movement Quiz", "Indian Polity Quiz",
+        "Geography Quiz", "Economy Quiz", "General Science Quiz",
+        "Environment & Disaster Management Quiz", "Telangana Schemes Quiz",
+        "Current Affairs Quiz", "Quantitative Aptitude Quiz", "Logical Reasoning Quiz",
+        "Mental Ability Quiz", "Static GK Quiz", "Previous Year Repeat-Question Quiz",
+        "Full Syllabus Rapid-Fire Quiz"
+      ]
+    },
+    "mockTestRotation": {
+      "cycleLengthMonths": 6,
+      "items": [
+        "TSPSC Group I Prelims Full Mock",
+        "TSPSC Group II Full Mock",
+        "TSPSC Group III Full Mock",
+        "TSPSC AEE Full Mock",
+        "TSPSC General Studies Only Mock",
+        "TSPSC Final Revision Mock"
+      ]
+    },
+    "previousPapers": [
+      { "note": "TSPSC previous year papers across posts (Group I/II/III, AEE and others) with answer keys", "source": "https://www.tspsc.gov.in" }
+    ],
+    "cheatSheets": [
+      "Telangana History & Movement Quick Revision Card",
+      "Indian Polity Quick Revision Card",
+      "Current Affairs Monthly Digest Card",
+      "Telangana Government Schemes One-Pager",
+      "Static GK Quick Reference"
+    ]
+  },
+
+  "placement_exams": {
+    "recordedVideos": [
+      "Quant 01 — Time & Work, Time-Speed-Distance",
+      "Quant 02 — Percentages, Profit & Loss",
+      "Quant 03 — Permutations, Combinations & Probability",
+      "Logical Reasoning — Puzzles & Series",
+      "Verbal Ability — Grammar & Comprehension",
+      "Coding Round 01 — Arrays & Strings",
+      "Coding Round 02 — Basic DSA & OOP Concepts",
+      "SQL Basics for Placement Tests",
+      "Group Discussion — Approach & Common Topics",
+      "HR Interview — Common Questions & Answering Framework"
+    ],
+    "studyMaterial": [
+      "Quant — Time, Work & Distance Notes",
+      "Quant — Percentages & Profit-Loss Notes",
+      "Quant — Permutations, Combinations & Probability Notes",
+      "Logical Reasoning Notes",
+      "Verbal Ability Notes",
+      "Coding Fundamentals — Arrays, Strings, DSA Notes",
+      "OOP Concepts & SQL Basics Notes",
+      "Resume Building & GD/HR Prep Notes"
+    ],
+    "quizRotation": {
+      "cycleLengthDays": 15,
+      "items": [
+        "Time & Work Quiz", "Time-Speed-Distance Quiz", "Percentages Quiz", "Profit & Loss Quiz",
+        "Permutations & Combinations Quiz", "Probability Quiz",
+        "Logical Reasoning Quiz", "Series Quiz", "Data Sufficiency Quiz",
+        "Verbal Ability Quiz", "Reading Comprehension Quiz",
+        "Coding MCQ Quiz — Arrays & Strings", "Coding MCQ Quiz — OOP & DSA",
+        "SQL Basics Quiz", "Full Syllabus Rapid-Fire Quiz"
+      ]
+    },
+    "mockTestRotation": {
+      "cycleLengthMonths": 6,
+      "items": [
+        "TCS NQT Full Mock Test",
+        "AMCAT Full Mock Test",
+        "Infosys/Wipro Style Aptitude Mock",
+        "Cognizant/Accenture Style Aptitude Mock",
+        "Coding Round Timed Mock (2-3 problems)",
+        "Final Revision Mixed-Company Mock"
+      ]
+    },
+    "previousPapers": [
+      { "note": "Company-wise previous year placement test papers (TCS NQT, Infosys, Wipro, Cognizant, Accenture and others) with solutions" }
+    ],
+    "cheatSheets": [
+      "Quant Shortcut Formula Sheet",
+      "DSA Time Complexity Cheat Sheet",
+      "HR Interview One-Pager",
+      "GD Topics & Framework Card",
+      "Resume Checklist"
+    ]
+  }
+}

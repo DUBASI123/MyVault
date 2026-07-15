@@ -8,9 +8,34 @@ import '../../core/router/app_router.dart';
 import '../../shared/widgets/app_scaffold.dart';
 import '../../shared/widgets/college_logo_header.dart';
 import '../auth/data/auth_repository.dart';
+import 'exam_rotation_providers.dart';
 
 class CompetitiveExamsScreen extends ConsumerWidget {
   const CompetitiveExamsScreen({super.key});
+
+  String _mapExamId(String exam) {
+    switch (exam) {
+      case 'GATE': return 'gate';
+      case 'GRE': return 'gre';
+      case 'CAT': return 'cat';
+      case 'Bank Exams': return 'bank_exams';
+      case 'TSPSC': return 'tspsc';
+      case 'Placement Exams': return 'placement_exams';
+      default: return exam.toLowerCase().replaceAll(' ', '_');
+    }
+  }
+
+  String _mapContentType(String resource) {
+    switch (resource) {
+      case 'Recorded Videos': return 'recorded_video';
+      case 'Study Material': return 'study_material';
+      case 'Quiz': return 'quiz';
+      case 'Mock Tests': return 'mock_test';
+      case 'Previous Papers': return 'previous_paper';
+      case 'Cheat Sheets': return 'cheat_sheet';
+      default: return 'recorded_video';
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -51,7 +76,7 @@ class CompetitiveExamsScreen extends ConsumerWidget {
                                   leading: Icon(_icon(r), color: AppColors.compExams, size: 18),
                                   title: Text(r, style: AppTextStyles.bodyMedium),
                                   trailing: const Icon(Icons.arrow_forward_ios, size: 12),
-                                  onTap: () => _showResources(context, exam, r),
+                                  onTap: () => _showLiveResources(context, ref, exam, r),
                                 ))
                             .toList(),
                       ),
@@ -71,162 +96,231 @@ class CompetitiveExamsScreen extends ConsumerWidget {
     return Icons.article_outlined;
   }
 
-  void _showResources(BuildContext context, String exam, String category) {
-    final list = _examResourcesData[exam]?[category] ?? [];
+  void _showLiveResources(BuildContext context, WidgetRef ref, String exam, String category) {
+    final examId = _mapExamId(exam);
+    final contentType = _mapContentType(category);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.7,
-        ),
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$exam - $category',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Poppins',
-                color: AppColors.compExams,
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (list.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                  child: Text(
-                    'No resources available for this section yet.',
-                    style: TextStyle(color: AppColors.textSecondary, fontFamily: 'Poppins', fontSize: 13),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) => Container(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Pull Bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              )
-            else
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: list.length,
-                  itemBuilder: (_, i) {
-                    final item = list[i];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppColors.compExams.withValues(alpha: 0.1),
-                          child: Icon(_icon(category), color: AppColors.compExams, size: 20),
-                        ),
-                        title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'Poppins')),
-                        subtitle: Text(item.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontFamily: 'Poppins')),
-                        trailing: const Icon(Icons.open_in_new_rounded, color: AppColors.compExams, size: 18),
-                        onTap: () async {
-                          final url = Uri.parse(item.url);
-                          try {
-                            if (await canLaunchUrl(url)) {
-                              await launchUrl(url, mode: LaunchMode.externalApplication);
-                            }
-                          } catch (_) {}
-                        },
-                      ),
-                    );
+              ),
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: AppColors.compExams.withValues(alpha: 0.1),
+                    child: Icon(_icon(category), color: AppColors.compExams, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(exam, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Poppins')),
+                        Text(category, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontFamily: 'Poppins')),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    if (contentType == 'quiz') {
+                      return _buildQuizView(ref, examId, scrollController);
+                    } else if (contentType == 'mock_test') {
+                      return _buildMockTestView(ref, examId, scrollController);
+                    } else {
+                      return _buildStaticContentView(ref, examId, contentType, scrollController);
+                    }
                   },
                 ),
               ),
-            const SizedBox(height: 16),
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildQuizView(WidgetRef ref, String examId, ScrollController sc) {
+    final todayAsync = ref.watch(todaysQuizProvider(examId));
+    final allAsync = ref.watch(quizArchiveProvider(examId));
+
+    return ListView(
+      controller: sc,
+      children: [
+        const Text("Today's Daily Challenge", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.compExams, fontFamily: 'Poppins')),
+        const SizedBox(height: 8),
+        todayAsync.when(
+          data: (quiz) {
+            if (quiz == null) {
+              return const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: Text("No daily challenge for today.", style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+                ),
+              );
+            }
+            return _buildContentCard(quiz, isFeatured: true);
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => Center(child: Text('Error loading today\'s quiz: $err')),
+        ),
+        const SizedBox(height: 24),
+        const Text("Quiz Archive & Practice Sets", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary, fontFamily: 'Poppins')),
+        const SizedBox(height: 8),
+        allAsync.when(
+          data: (list) {
+            if (list.isEmpty) {
+              return const Center(child: Text("No quizzes found in database.", style: TextStyle(fontSize: 12, color: AppColors.textSecondary)));
+            }
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: list.length,
+              itemBuilder: (ctx, i) => _buildContentCard(list[i]),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => Center(child: Text('Error loading archive: $err')),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMockTestView(WidgetRef ref, String examId, ScrollController sc) {
+    final todayAsync = ref.watch(thisMonthMockProvider(examId));
+    final allAsync = ref.watch(mockTestArchiveProvider(examId));
+
+    return ListView(
+      controller: sc,
+      children: [
+        const Text("This Month's Mock Test", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.compExams, fontFamily: 'Poppins')),
+        const SizedBox(height: 8),
+        todayAsync.when(
+          data: (mock) {
+            if (mock == null) {
+              return const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: Text("No mock test active for this month.", style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+                ),
+              );
+            }
+            return _buildContentCard(mock, isFeatured: true);
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => Center(child: Text('Error loading mock test: $err')),
+        ),
+        const SizedBox(height: 24),
+        const Text("Full Mock Test Series", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary, fontFamily: 'Poppins')),
+        const SizedBox(height: 8),
+        allAsync.when(
+          data: (list) {
+            if (list.isEmpty) {
+              return const Center(child: Text("No mocks found in database.", style: TextStyle(fontSize: 12, color: AppColors.textSecondary)));
+            }
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: list.length,
+              itemBuilder: (ctx, i) => _buildContentCard(list[i]),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => Center(child: Text('Error loading archive: $err')),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStaticContentView(WidgetRef ref, String examId, String contentType, ScrollController sc) {
+    final listAsync = ref.watch(examStaticContentProvider((examId: examId, contentType: contentType)));
+
+    return listAsync.when(
+      data: (list) {
+        if (list.isEmpty) {
+          return const Center(
+            child: Text('No resources available for this section yet.',
+                style: TextStyle(color: AppColors.textSecondary, fontFamily: 'Poppins', fontSize: 13)),
+          );
+        }
+        return ListView.builder(
+          controller: sc,
+          itemCount: list.length,
+          itemBuilder: (ctx, i) => _buildContentCard(list[i]),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(child: Text('Error: $err')),
+    );
+  }
+
+  Widget _buildContentCard(Map<String, dynamic> item, {bool isFeatured = false}) {
+    final title = item['title'] as String? ?? 'Unnamed Resource';
+    final desc = item['description'] as String? ?? '';
+    final urlStr = item['file_url'] as String? ?? item['external_link'] as String? ?? 'https://google.com';
+    final qCount = item['question_count'] as int?;
+    final tLimit = item['time_limit_minutes'] as int?;
+    
+    String subtitleText = desc;
+    if (qCount != null && tLimit != null) {
+      subtitleText = '$qCount Qs • $tLimit Mins • $desc';
+    } else if (item['year'] != null) {
+      subtitleText = 'Year: ${item['year']} • $desc';
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: isFeatured ? 4 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: isFeatured ? const BorderSide(color: AppColors.compExams, width: 1.5) : BorderSide.none,
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'Poppins', color: isFeatured ? AppColors.compExams : AppColors.textPrimary)),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(subtitleText, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontFamily: 'Poppins')),
+        ),
+        trailing: const Icon(Icons.open_in_new_rounded, color: AppColors.compExams, size: 18),
+        onTap: () async {
+          final url = Uri.parse(urlStr);
+          try {
+            if (await canLaunchUrl(url)) {
+              await launchUrl(url, mode: LaunchMode.externalApplication);
+            }
+          } catch (_) {}
+        },
       ),
     );
   }
 }
 
-class ExamResource {
-  final String title;
-  final String description;
-  final String url;
-  const ExamResource(this.title, this.description, this.url);
-}
-
-const Map<String, Map<String, List<ExamResource>>> _examResourcesData = {
-  'GATE': {
-    'Recorded Videos': [
-      ExamResource('GATE CSE Lectures by Gate Smashers', 'Complete course coverage with simplified explanations for CSE.', 'https://www.youtube.com/playlist?list=PLxCzCOWd7aiGz9donHRrE9I3Mwn6XdP8p'),
-      ExamResource('GATE ECE Lectures by NPTEL', 'Premium high-quality lectures from IIT professors covering the ECE syllabus.', 'https://www.youtube.com/playlist?list=PL3D11EBEA54D4F4F3'),
-    ],
-    'Study Material': [
-      ExamResource('GeeksforGeeks GATE CS Notes', 'Topic-wise detailed study notes and quick cheat sheets for CS.', 'https://www.geeksforgeeks.org/gate-cs-notes-gq/'),
-      ExamResource('GATE ECE Study Notes (Kreatryx)', 'Detailed handbook and formula sheets for Core Electronics.', 'https://www.google.com/search?q=Kreatryx+GATE+ECE+handbook+pdf'),
-    ],
-    'Quiz': [
-      ExamResource('IndiaBIX GATE Technical Quiz', 'Interactive online practice quizzes for GATE technical topics.', 'https://www.indiabix.com/online-test/gate-preparation/'),
-    ],
-    'Mock Tests': [
-      ExamResource('Testbook GATE CSE Free Mock Test', 'Full-length simulated mock exam matching current pattern.', 'https://testbook.com/gate-cs/mock-test'),
-    ],
-    'Previous Papers': [
-      ExamResource('GATE official website past papers', 'Official question booklets and keys from current/past organizing IITs.', 'https://gate2024.iiscl.ac.in/'),
-    ],
-    'Cheat Sheets': [
-      ExamResource('GATE CSE Quick Revision Cheat Sheet', 'Short summary formulas and rules compiled in one PDF.', 'https://gate.unacademy.com/'),
-    ],
-  },
-  'GRE': {
-    'Recorded Videos': [
-      ExamResource('GregMat GRE Preparation Videos', 'Excellent strategies for Verbal and Quantitative reasoning.', 'https://www.youtube.com/@GregMat'),
-    ],
-    'Study Material': [
-      ExamResource('Official GRE prep guide (ETS)', 'Official study guide containing tips directly from the exam setters.', 'https://www.ets.org/gre/prepare.html'),
-    ],
-    'Mock Tests': [
-      ExamResource('Princeton Review Free GRE Practice Test', 'Full-length practice test with details on performance breakdown.', 'https://www.princetonreview.com/grad/free-gre-practice-test'),
-    ],
-  },
-  'CAT': {
-    'Recorded Videos': [
-      ExamResource('CAT Quantitative Aptitude (Rodha)', 'Comprehensive free video lectures for QA and LRDI sections.', 'https://www.youtube.com/@Rodha'),
-    ],
-    'Study Material': [
-      ExamResource('Shiksha CAT Exam Preparation Guide', 'Detailed syllabus notes, book lists, and preparation calendar.', 'https://www.shiksha.com/mba/cat-exam-preparation'),
-    ],
-    'Previous Papers': [
-      ExamResource('CAT Previous Years Solved Papers', 'Direct downloads of solved question papers from the past 5 years.', 'https://www.collegedekho.com/articles/cat-previous-years-question-papers/'),
-    ],
-  },
-  'Bank Exams': {
-    'Recorded Videos': [
-      ExamResource('Adda247 Banking Preparation Channel', 'Daily live lectures covering quantitative aptitude and reasoning.', 'https://www.youtube.com/@Adda247live'),
-    ],
-    'Study Material': [
-      ExamResource('IBPS Guide Free Study Materials', 'Preparation handbooks for SBI PO, clerk, and IBPS RRB.', 'https://www.ibpsguide.com/'),
-    ],
-  },
-  'TSPSC': {
-    'Recorded Videos': [
-      ExamResource('TSPSC Telugu Medium Lectures (VMR Logics)', 'Top rated coaching lectures in Telugu for TSPSC Group exams.', 'https://www.youtube.com/@vmrlogics'),
-    ],
-    'Study Material': [
-      ExamResource('TSPSC Group preparation guide', 'Official notifications, syllabus guides, and free study notes.', 'https://www.tspsc.gov.in/'),
-    ],
-  },
-  'Placement Exams': {
-    'Recorded Videos': [
-      ExamResource('PrepInsta Placement Preparation Guide', 'Step-by-step videos to crack TCS NQT, Wipro, Infosys, and Cognizant.', 'https://www.youtube.com/@PrepInsta'),
-    ],
-    'Study Material': [
-      ExamResource('GeeksforGeeks Placement Prep', 'Must-do coding questions, coding practice, and puzzle sheets.', 'https://www.geeksforgeeks.org/lmns-gq/'),
-    ],
-    'Mock Tests': [
-      ExamResource('IndiaBIX Aptitude Practice Tests', 'Free mock practice questions for Quantitative, Verbal, and Logical sections.', 'https://www.indiabix.com/'),
-    ],
-  },
-};
