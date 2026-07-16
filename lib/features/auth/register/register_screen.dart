@@ -142,11 +142,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     setState(() => _isLoading = true);
     
-    final emailTarget = _email.text.trim();
+    final mobileTarget = OtpService.normalizePhone(_mobile.text.trim());
 
     try {
-      // 1. Send OTP to the email address
-      await OtpService.sendOtp(emailTarget, purpose: 'register');
+      // 1. Send OTP to the mobile number
+      await ref.read(authRepositoryProvider).sendOtp(mobileTarget, purpose: 'register');
       
       setState(() => _isLoading = false);
       
@@ -156,7 +156,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       context.push(
         AppRoutes.otpVerification,
         extra: {
-          'identifier': emailTarget,
+          'identifier': mobileTarget,
           'purpose': 'register',
           'onSuccess': () async {
             // Success! Pop the verification screen
@@ -252,7 +252,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 ),
                                 SizedBox(height: 3),
                                 Text(
-                                  'Your email is verified. Log in with your credentials.',
+                                  'Your mobile number is verified. Log in with your credentials.',
                                   style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 12,

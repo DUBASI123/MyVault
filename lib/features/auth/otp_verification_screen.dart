@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../../core/services/otp_service.dart';
 import '../../shared/widgets/custom_button.dart';
+import 'data/auth_repository.dart';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
   final String identifier;
@@ -77,7 +78,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     });
 
     try {
-      final result = await OtpService.sendOtp(widget.identifier, purpose: widget.purpose);
+      await ref.read(authRepositoryProvider).sendOtp(widget.identifier, purpose: widget.purpose);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Verification code sent to ${widget.identifier}'),
@@ -110,7 +111,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
       _errorMessage = null;
     });
 
-    final success = await OtpService.verifyOtp(
+    final success = await ref.read(authRepositoryProvider).verifyOtp(
       widget.identifier,
       otp,
       purpose: widget.purpose,
