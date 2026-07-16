@@ -1,30 +1,30 @@
 import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma.js';
-import { isEmailTarget, normalizePhone } from '../lib/phone.js';
+import { normalizePhone } from '../lib/phone.js';
 import { signToken } from '../middleware/auth.middleware.js';
-import { sendLiveOtpSms, sendLiveOtpEmail } from '../services/otp_delivery.service.js';
 import { broadcastToUser } from '../services/socket_service.js';
 import { uploadBuffer } from '../services/cloudinary.service.js';
 
-function generateOtp() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
+// ─────────────────────────────────────────────────────────────────────────
+// OTP (sendOtp / verifyOtp / resetPassword) has been REMOVED from this
+// controller. It now lives entirely in Supabase Auth on the Flutter side
+// (see auth_repository.dart). This removes:
+//   - the otpToken table as a source of truth
+//   - the custom sendLiveOtpSms / sendLiveOtpEmail delivery service
+//     (the thing that was throwing the 500 on Forgot Password)
+// Supabase's own SMS provider (configured once in the Supabase dashboard
+// under Authentication → Providers → Phone) now handles delivery, retries,
+// and rate limiting for OTPs.
+//
+// If you still need server-side awareness of a password change (e.g. to
+// invalidate old JWTs issued by THIS backend), add a Supabase webhook or
+// have the Flutter client call a small POST /auth/sync endpoint after a
+// successful Supabase password reset.
+// ─────────────────────────────────────────────────────────────────────────
 
 function studentResponse(student) {
   const { passwordHash, ...safe } = student;
   return safe;
-}
-
-async function findRecentVerifiedOtp(target, purpose) {
-  return prisma.otpToken.findFirst({
-    where: {
-      target,
-      purpose,
-      used: true,
-      expiresAt: { gt: new Date(Date.now() - 30 * 60 * 1000) },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
 }
 
 export async function register(req, res, next) {
@@ -46,15 +46,10 @@ export async function register(req, res, next) {
       passingYear,
       gender,
       state,
-      isMobileVerified = false,
-      isEmailVerified = false,
     } = req.body;
 
     const normalizedMobile = normalizePhone(mobile);
     const normalizedEmail = String(email).trim().toLowerCase();
-
-    let mobileOk = true;
-    let emailOk = true;
 
     const passwordHash = await bcrypt.hash(password, 10);
     const student = await prisma.student.create({
@@ -120,7 +115,6 @@ export async function login(req, res, next) {
     const valid = await bcrypt.compare(password, student.passwordHash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-    // Block login if student is not approved
     const isApproved = student.isVerified || (student.verificationStatus && student.verificationStatus.toLowerCase() === 'approved');
     if (!isApproved) {
       return res.status(403).json({ error: 'Your student account is pending approval by the college administration.' });
@@ -128,175 +122,6 @@ export async function login(req, res, next) {
 
     const token = signToken({ sub: student.id, role: student.role });
     res.json({ token, student: studentResponse(student) });
-  } catch (err) {
-    next(err);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// FIX: previously, if sendLiveOtpSms / sendLiveOtpEmail threw in production,
-// the error was rethrown and crashed the request as an unhandled 500
-// (DioException [bad response] on the Flutter side). The OTP row is already
-// persisted in the DB by that point, so a delivery failure should be
-// reported as a clean, expected error — not a server crash.
-// ─────────────────────────────────────────────────────────────────────────
-export async function sendOtp(req, res, next) {
-  try {
-    const { target, purpose = 'reset' } = req.body;
-    if (!target) return res.status(400).json({ error: 'Target required' });
-
-    const normalized = isEmailTarget(target)
-      ? String(target).trim().toLowerCase()
-      : normalizePhone(target);
-
-    const otp = generateOtp();
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`\n🔑 [DEV ONLY] OTP Code for ${normalized}: ${otp}\n`);
-    }
-
-    await prisma.otpToken.create({
-      data: {
-        target: normalized,
-        code: otp,
-        purpose,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-      },
-    });
-
-    const isEmail = isEmailTarget(normalized);
-    let delivery = null;
-    let deliveryFailed = false;
-    let deliveryError = null;
-
-    try {
-      delivery = isEmail
-        ? await sendLiveOtpEmail(normalized, otp)
-        : await sendLiveOtpSms(normalized, otp);
-    } catch (deliveryErr) {
-      deliveryFailed = true;
-      deliveryError = deliveryErr.message;
-      console.error('OTP delivery failed:', deliveryErr);
-      // Do NOT rethrow — the OTP is already saved, so don't 500 the request.
-    }
-
-    if (deliveryFailed) {
-      return res.status(502).json({
-        error: 'Failed to send OTP. Please try again in a moment.',
-        target: normalized,
-        detail: process.env.NODE_ENV !== 'production' ? deliveryError : undefined,
-      });
-    }
-
-    res.json({
-      message: 'OTP sent',
-      target: normalized,
-      channel: delivery?.channel,
-      otpPreview: process.env.NODE_ENV !== 'production' ? otp : undefined,
-    });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function verifyOtp(req, res, next) {
-  try {
-    const { target, otp, purpose = 'reset' } = req.body;
-    if (!target || !otp) {
-      return res.status(400).json({ error: 'Target and OTP required' });
-    }
-
-    const normalized = isEmailTarget(target)
-      ? String(target).trim().toLowerCase()
-      : normalizePhone(target);
-
-    const record = await prisma.otpToken.findFirst({
-      where: {
-        target: normalized,
-        code: otp,
-        purpose,
-        used: false,
-        expiresAt: { gt: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (!record) return res.status(400).json({ error: 'Invalid or expired OTP' });
-
-    if (purpose === 'reset') {
-      return res.json({ verified: true, target: normalized });
-    }
-
-    await prisma.otpToken.update({
-      where: { id: record.id },
-      data: { used: true },
-    });
-
-    const student = await prisma.student.findFirst({
-      where: isEmailTarget(normalized)
-        ? { email: normalized }
-        : { mobile: normalized },
-    });
-
-    if (student) {
-      await prisma.student.update({
-        where: { id: student.id },
-        data: isEmailTarget(normalized)
-          ? { isEmailVerified: true }
-          : { isMobileVerified: true },
-      });
-    }
-
-    res.json({ verified: true, target: normalized });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function resetPassword(req, res, next) {
-  try {
-    const { identifier, otp, newPassword, target } = req.body;
-    if (!identifier || !otp || !newPassword) {
-      return res.status(400).json({ error: 'Identifier, OTP, and new password required' });
-    }
-
-    const id = String(identifier).trim();
-    const mobileGuess = id.includes('@') ? null : normalizePhone(id);
-
-    const student = await prisma.student.findFirst({
-      where: {
-        OR: [
-          { email: id.toLowerCase() },
-          { hallTicket: id },
-          { mobile: id },
-          ...(mobileGuess ? [{ mobile: mobileGuess }] : []),
-        ],
-      },
-    });
-    if (!student) return res.status(404).json({ error: 'User not found' });
-
-    const otpTarget = target
-      ? (isEmailTarget(target) ? String(target).trim().toLowerCase() : normalizePhone(target))
-      : student.email;
-
-    const record = await prisma.otpToken.findFirst({
-      where: {
-        target: otpTarget,
-        code: otp,
-        purpose: 'reset',
-        used: false,
-        expiresAt: { gt: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (!record) return res.status(400).json({ error: 'Invalid or expired OTP' });
-
-    await prisma.student.update({
-      where: { id: student.id },
-      data: { passwordHash: await bcrypt.hash(newPassword, 10) },
-    });
-    await prisma.otpToken.update({ where: { id: record.id }, data: { used: true } });
-
-    res.json({ message: 'Password updated' });
   } catch (err) {
     next(err);
   }

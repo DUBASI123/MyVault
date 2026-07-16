@@ -102,18 +102,6 @@ model AcademicContent {
   @@map("academic_contents")
 }
 
-model OtpToken {
-  id        String   @id @default(uuid())
-  target    String
-  code      String
-  purpose   String
-  expiresAt DateTime @map("expires_at")
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@map("otp_tokens")
-}
-
 model Notification {
   id        String   @id @default(uuid())
   title     String
@@ -548,21 +536,6 @@ model GovtJob {
   createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("govt_jobs")
-}
-
-model OtpVerification {
-  id          String   @id @default(uuid())
-  identifier  String   
-  channel     String   
-  otpHash     String   @map("otp_hash")
-  purpose     String   
-  attempts    Int      @default(0)
-  verified    Boolean  @default(false)
-  expiresAt   DateTime @map("expires_at")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  @@index([identifier, purpose])
-  @@map("otp_verifications")
 }
 
 
