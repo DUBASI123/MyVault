@@ -257,19 +257,22 @@ class AuthRepository {
   /// For phone: uses Supabase phone OTP.
   /// For email: uses Supabase's email OTP (magic-link-style one-time code).
   Future<OtpSendResult> sendOtp(String target, {String purpose = 'reset'}) async {
+    if (!isEmailTarget(target)) {
+      // Supabase Auth identities in this app are created via email+password
+      // at registration (see `register()` above) — phone numbers are never
+      // registered as a Supabase auth identity. Sending an OTP to a phone
+      // that Supabase doesn't recognize as an identity returns
+      // "Signups not allowed for otp". So mobile-based password reset isn't
+      // supported unless phone is also linked as an identity at signup.
+      throw Exception(
+        'Password reset via mobile isn\'t available yet. Please use the Email option instead.',
+      );
+    }
     try {
-      if (isEmailTarget(target)) {
-        await _db.auth.signInWithOtp(
-          email: target.trim().toLowerCase(),
-          shouldCreateUser: false, // don't create a new account during password reset
-        );
-      } else {
-        final phone = normalizePhoneE164(target);
-        await _db.auth.signInWithOtp(
-          phone: phone,
-          shouldCreateUser: false,
-        );
-      }
+      await _db.auth.signInWithOtp(
+        email: target.trim().toLowerCase(),
+        shouldCreateUser: false, // don't create a new account during password reset
+      );
       return const OtpSendResult();
     } on AuthException catch (e) {
       final msg = e.message.toLowerCase();
@@ -294,21 +297,15 @@ class AuthRepository {
     String? verificationId, // unused, kept for call-site compatibility
     String purpose = 'reset',
   }) async {
+    if (!isEmailTarget(target)) {
+      throw Exception('Password reset via mobile isn\'t available yet. Please use the Email option instead.');
+    }
     try {
-      final AuthResponse response;
-      if (isEmailTarget(target)) {
-        response = await _db.auth.verifyOTP(
-          email: target.trim().toLowerCase(),
-          token: otp,
-          type: OtpType.email,
-        );
-      } else {
-        response = await _db.auth.verifyOTP(
-          phone: normalizePhoneE164(target),
-          token: otp,
-          type: OtpType.sms,
-        );
-      }
+      final response = await _db.auth.verifyOTP(
+        email: target.trim().toLowerCase(),
+        token: otp,
+        type: OtpType.email,
+      );
       return response.session != null;
     } on AuthException catch (e) {
       final msg = e.message.toLowerCase();
