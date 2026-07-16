@@ -8,6 +8,7 @@ import {
   approveStudent,
   rejectStudent,
   uploadFile,
+  linkPhone,
 } from '../controllers/auth.controller.js';
 import { authMiddleware } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validate.js';
@@ -51,5 +52,6 @@ router.post('/admin/approve-student', authMiddleware, approveStudent);
 router.post('/admin/reject-student', authMiddleware, rejectStudent);
 
 router.post('/upload', upload.single('file'), uploadFile);
+router.post('/auth/link-phone', linkPhone);
 
 export default router;

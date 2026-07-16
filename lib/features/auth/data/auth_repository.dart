@@ -1,9 +1,14 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/cloudinary_service.dart';
 import '../../../shared/models/student_model.dart';
+
+// Point this at the Render production API URL
+const String _backendBaseUrl = 'https://myvault-jbd7.onrender.com/api';
 
 // ─── Verification Exception ──────────────────────────────────────────────────
 class PendingVerificationException implements Exception {
@@ -161,6 +166,19 @@ class AuthRepository {
       final user = response.user;
       if (user == null) throw Exception('Account creation failed. Please try again.');
 
+      // Link + auto-confirm the phone number as a Supabase Auth identity so
+      // mobile-based OTP (e.g. Forgot Password) works later. Non-fatal if
+      // it fails — registration itself already succeeded via email.
+      try {
+        await http.post(
+          Uri.parse('$_backendBaseUrl/auth/link-phone'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'userId': user.id, 'phone': student.mobile}),
+        );
+      } catch (_) {
+        // Swallow — phone linking is best-effort; don't block registration.
+      }
+
       await _db.from('students').insert({
         'id': user.id,
         'first_name': student.firstName,
@@ -257,29 +275,30 @@ class AuthRepository {
   /// For phone: uses Supabase phone OTP.
   /// For email: uses Supabase's email OTP (magic-link-style one-time code).
   Future<OtpSendResult> sendOtp(String target, {String purpose = 'reset'}) async {
-    if (!isEmailTarget(target)) {
-      // Supabase Auth identities in this app are created via email+password
-      // at registration (see `register()` above) — phone numbers are never
-      // registered as a Supabase auth identity. Sending an OTP to a phone
-      // that Supabase doesn't recognize as an identity returns
-      // "Signups not allowed for otp". So mobile-based password reset isn't
-      // supported unless phone is also linked as an identity at signup.
-      throw Exception(
-        'Password reset via mobile isn\'t available yet. Please use the Email option instead.',
-      );
-    }
     try {
-      await _db.auth.signInWithOtp(
-        email: target.trim().toLowerCase(),
-        shouldCreateUser: false, // don't create a new account during password reset
-      );
+      if (isEmailTarget(target)) {
+        await _db.auth.signInWithOtp(
+          email: target.trim().toLowerCase(),
+          shouldCreateUser: false, // don't create a new account during password reset
+        );
+      } else {
+        // Requires the phone to already be linked + confirmed on the
+        // Supabase Auth user — done via POST /auth/link-phone at
+        // registration time (see `register()` above). If a student
+        // registered BEFORE this linking was added, this will still fail
+        // with "Signups not allowed for otp" until they're backfilled.
+        await _db.auth.signInWithOtp(
+          phone: normalizePhoneE164(target),
+          shouldCreateUser: false,
+        );
+      }
       return const OtpSendResult();
     } on AuthException catch (e) {
       final msg = e.message.toLowerCase();
       if (msg.contains('rate limit') || msg.contains('too many')) {
         throw Exception('Too many OTP requests. Please wait a minute and try again.');
       }
-      if (msg.contains('user not found') || msg.contains('not found')) {
+      if (msg.contains('not allowed') || msg.contains('not found')) {
         throw Exception('No account found for this mobile/email.');
       }
       throw Exception('Failed to send OTP: ${e.message}');
@@ -297,15 +316,21 @@ class AuthRepository {
     String? verificationId, // unused, kept for call-site compatibility
     String purpose = 'reset',
   }) async {
-    if (!isEmailTarget(target)) {
-      throw Exception('Password reset via mobile isn\'t available yet. Please use the Email option instead.');
-    }
     try {
-      final response = await _db.auth.verifyOTP(
-        email: target.trim().toLowerCase(),
-        token: otp,
-        type: OtpType.email,
-      );
+      final AuthResponse response;
+      if (isEmailTarget(target)) {
+        response = await _db.auth.verifyOTP(
+          email: target.trim().toLowerCase(),
+          token: otp,
+          type: OtpType.email,
+        );
+      } else {
+        response = await _db.auth.verifyOTP(
+          phone: normalizePhoneE164(target),
+          token: otp,
+          type: OtpType.sms,
+        );
+      }
       return response.session != null;
     } on AuthException catch (e) {
       final msg = e.message.toLowerCase();

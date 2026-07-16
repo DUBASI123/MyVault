@@ -4,6 +4,7 @@ import { normalizePhone } from '../lib/phone.js';
 import { signToken } from '../middleware/auth.middleware.js';
 import { broadcastToUser } from '../services/socket_service.js';
 import { uploadBuffer } from '../services/cloudinary.service.js';
+import { linkAndConfirmPhone } from '../services/supabaseAdmin.service.js';
 
 // ─────────────────────────────────────────────────────────────────────────
 // OTP (sendOtp / verifyOtp / resetPassword) has been REMOVED from this
@@ -256,6 +257,23 @@ export async function uploadFile(req, res, next) {
     }
     const secureUrl = await uploadBuffer(req.file.buffer, req.file.originalname);
     res.json({ url: secureUrl });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function linkPhone(req, res, next) {
+  try {
+    const { userId, phone } = req.body;
+    if (!userId || !phone) {
+      return res.status(400).json({ error: 'userId and phone are required' });
+    }
+
+    const normalized = normalizePhone(phone);
+    const e164 = normalized.startsWith('+') ? normalized : `+91${normalized.replace(/^0+/, '')}`;
+
+    const user = await linkAndConfirmPhone(userId, e164);
+    res.json({ message: 'Phone linked and confirmed', phone: user.phone });
   } catch (err) {
     next(err);
   }

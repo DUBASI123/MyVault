@@ -18,14 +18,12 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
-  // Default + only supported mode: password reset identities in Supabase
-  // are email+password, so mobile-based OTP reset isn't available (see
-  // auth_repository.dart sendOtp/verifyOtp for details).
-  final String _mode = 'email';
+  String _mode = 'mobile';
   OtpBadgeStatus _otpStatus = OtpBadgeStatus.pending;
   bool _isLoading = false;
 
   final _email = TextEditingController();
+  final _mobile = TextEditingController();
   final _otp = TextEditingController();
   final _newPassword = TextEditingController();
   final _confirmPassword = TextEditingController();
@@ -33,13 +31,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   @override
   void dispose() {
     _email.dispose();
+    _mobile.dispose();
     _otp.dispose();
     _newPassword.dispose();
     _confirmPassword.dispose();
     super.dispose();
   }
 
-  String get _target => _email.text.trim();
+  String get _target => _mode == 'email' ? _email.text.trim() : _mobile.text.trim();
 
   void _snack(String msg, {bool error = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -49,7 +48,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   Future<void> _sendOtp() async {
     if (_target.isEmpty) {
-      _snack('Enter your email', error: true);
+      _snack('Enter ${_mode == 'email' ? 'email' : 'mobile'}', error: true);
       return;
     }
     setState(() => _isLoading = true);
@@ -142,9 +141,18 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             ),
             const SizedBox(height: 20),
             if (_otpStatus != OtpBadgeStatus.verified) ...[
-              // Mobile-based reset isn't available yet — see auth_repository.dart.
-              // Only Email is offered here to avoid the "Signups not allowed for otp" error.
-              CustomTextField(label: 'Email', controller: _email, keyboardType: TextInputType.emailAddress),
+              Row(
+                children: [
+                  Expanded(child: _modeBtn('Mobile', 'mobile')),
+                  const SizedBox(width: 12),
+                  Expanded(child: _modeBtn('Email', 'email')),
+                ],
+              ),
+              const SizedBox(height: 20),
+              if (_mode == 'email')
+                CustomTextField(label: 'Email', controller: _email, keyboardType: TextInputType.emailAddress)
+              else
+                CustomTextField(label: 'Mobile', controller: _mobile, keyboardType: TextInputType.phone),
               const SizedBox(height: 20),
               if (_otpStatus == OtpBadgeStatus.pending || _otpStatus == OtpBadgeStatus.failed)
                 CustomButton(text: 'Send OTP', onPressed: _sendOtp, isLoading: _isLoading, icon: Icons.send_outlined),
@@ -170,6 +178,31 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               CustomButton(text: 'Reset Password', onPressed: _reset, isLoading: _isLoading),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _modeBtn(String label, String mode) {
+    final selected = _mode == mode;
+    return GestureDetector(
+      onTap: () => setState(() {
+        _mode = mode;
+        _otpStatus = OtpBadgeStatus.pending;
+        _otp.clear();
+      }),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(color: selected ? AppColors.textWhite : AppColors.textSecondary),
+          ),
         ),
       ),
     );
