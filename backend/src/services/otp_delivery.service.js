@@ -7,6 +7,21 @@ import nodemailer from 'nodemailer';
 export async function sendLiveOtpSms(phone, otp) {
   const message = `My Vault: Your verification code is ${otp}. Valid for 10 minutes.`;
 
+  if (process.env.MSG91_AUTH_KEY && process.env.MSG91_TEMPLATE_ID) {
+    const mobile = phone.replace(/\D/g, ''); // e.g. 91XXXXXXXXXX
+    const res = await fetch(`https://control.msg91.com/api/v5/otp?template_id=${process.env.MSG91_TEMPLATE_ID}&mobile=${mobile}&authkey=${process.env.MSG91_AUTH_KEY}&otp=${otp}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    const data = await res.json();
+    if (data.type === 'error') {
+      throw new Error(data.message || 'MSG91 failed');
+    }
+    return { channel: 'msg91' };
+  }
+
   if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
     const client = twilio(
       process.env.TWILIO_ACCOUNT_SID,

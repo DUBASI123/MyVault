@@ -141,113 +141,144 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
 
     setState(() => _isLoading = true);
+    
+    final emailTarget = _email.text.trim();
+
     try {
-      final student = StudentModel(
-        id: '',
-        firstName: _firstName.text.trim(),
-        lastName: _lastName.text.trim(),
-        fullNameAadhar: _aadharName.text.trim(),
-        mobile: OtpService.normalizePhone(_mobile.text.trim()),
-        email: _email.text.trim(),
-        hallTicket: _hallTicket.text.trim(),
-        universityId: _universityId ?? '1',
-        collegeId: _collegeId ?? 'c_1',
-        universityName: _university ?? '',
-        collegeName: _college ?? '',
-        course: _course ?? 'B.Tech',
-        branch: _branch ?? 'CSE',
-        semester: int.tryParse(_semester ?? '1') ?? 1,
-        yearOfStudy: int.tryParse(_year ?? '1') ?? 1,
-        gender: _gender ?? '',
-        state: _state ?? '',
-        isMobileVerified: true,
-        isEmailVerified: true,
-        verificationStatus: 'Approved',
-        isVerified: true,
-        createdAt: DateTime.now(),
-      );
-      await ref.read(authRepositoryProvider).register(
-        student,
-        _password.text,
-        idCardPath: _studentIdPath!,
-        profilePicPath: _profilePhotoPath!,
-      );
+      // 1. Send OTP to the email address
+      await OtpService.sendOtp(emailTarget, purpose: 'register');
+      
+      setState(() => _isLoading = false);
+      
+      if (!mounted) return;
 
-      // Clear ALL locally saved credentials and sessions completely
-      await AppStorage.instance.clearSession();
+      // 2. Open OTP Verification Screen
+      context.push(
+        AppRoutes.otpVerification,
+        extra: {
+          'identifier': emailTarget,
+          'purpose': 'register',
+          'onSuccess': () async {
+            // Success! Pop the verification screen
+            Navigator.pop(context);
 
-      if (mounted) {
-        // Immediately go to login — no dialog, no wait
-        context.go(AppRoutes.login);
+            setState(() => _isLoading = true);
 
-        // Show a beautiful green SnackBar notification at the top
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            duration: const Duration(seconds: 5),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            content: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF22C55E), Color(0xFF15803D)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF22C55E).withOpacity(0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: const Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.white24,
-                    radius: 18,
-                    child: Icon(Icons.check_rounded, color: Colors.white, size: 20),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Account Submitted!',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
+            try {
+              final student = StudentModel(
+                id: '',
+                firstName: _firstName.text.trim(),
+                lastName: _lastName.text.trim(),
+                fullNameAadhar: _aadharName.text.trim(),
+                mobile: OtpService.normalizePhone(_mobile.text.trim()),
+                email: _email.text.trim(),
+                hallTicket: _hallTicket.text.trim(),
+                universityId: _universityId ?? '1',
+                collegeId: _collegeId ?? 'c_1',
+                universityName: _university ?? '',
+                collegeName: _college ?? '',
+                course: _course ?? 'B.Tech',
+                branch: _branch ?? 'CSE',
+                semester: int.tryParse(_semester ?? '1') ?? 1,
+                yearOfStudy: int.tryParse(_year ?? '1') ?? 1,
+                gender: _gender ?? '',
+                state: _state ?? '',
+                isMobileVerified: true,
+                isEmailVerified: true,
+                verificationStatus: 'Approved',
+                isVerified: true,
+                createdAt: DateTime.now(),
+              );
+
+              await ref.read(authRepositoryProvider).register(
+                student,
+                _password.text,
+                idCardPath: _studentIdPath!,
+                profilePicPath: _profilePhotoPath!,
+              );
+
+              // Clear session storage
+              await AppStorage.instance.clearSession();
+
+              if (mounted) {
+                // Immediately go to login
+                context.go(AppRoutes.login);
+
+                // Show a beautiful green success SnackBar
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    behavior: SnackBarBehavior.floating,
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    duration: const Duration(seconds: 5),
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    content: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF22C55E), Color(0xFF15803D)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                        SizedBox(height: 3),
-                        Text(
-                          'You will be notified via Email & SMS once approved by the college admin.',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            height: 1.3,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF22C55E).withOpacity(0.4),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      child: const Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Colors.white24,
+                            radius: 18,
+                            child: Icon(Icons.check_rounded, color: Colors.white, size: 20),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Registration Completed!',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                SizedBox(height: 3),
+                                Text(
+                                  'Your email is verified. Log in with your credentials.',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }
+                );
+              }
+            } catch (e) {
+              _snack('Registration failed: ${e.toString()}', error: true);
+            } finally {
+              if (mounted) setState(() => _isLoading = false);
+            }
+          }
+        },
+      );
     } catch (e) {
-      _snack(e.toString(), error: true);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
+      _snack('Failed to send verification code: ${e.toString()}', error: true);
     }
   }
 

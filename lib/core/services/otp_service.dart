@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:dio/dio.dart';
 
 enum OtpTargetType { phone, email }
 
@@ -18,14 +19,13 @@ class OtpSendResult {
   });
 }
 
-/// Simulated local OTP helper to avoid external REST API calls/dependencies.
 class OtpService {
   OtpService._();
 
-  static bool get hasLiveProvider => true;
+  static const _backendUrl = 'https://myvault-jbd7.onrender.com/api/auth/otp';
+  static final Dio _dio = Dio();
 
-  // In-memory simulator registry for OTP codes
-  static final Map<String, String> _otpRegistry = {};
+  static bool get hasLiveProvider => true;
 
   static String normalizePhone(String raw) {
     final trimmed = raw.trim();
@@ -42,25 +42,42 @@ class OtpService {
   static OtpTargetType targetType(String target) =>
       target.contains('@') ? OtpTargetType.email : OtpTargetType.phone;
 
+  static String _mapPurpose(String purpose) {
+    final p = purpose.toLowerCase();
+    if (p == 'register') return 'REGISTER';
+    if (p == 'reset' || p == 'password_reset') return 'PASSWORD_RESET';
+    return 'LOGIN';
+  }
+
   static Future<OtpSendResult> sendOtp(
     String target, {
     String purpose = 'register',
   }) async {
     final type = targetType(target);
-    final normalized =
-        type == OtpTargetType.phone ? normalizePhone(target) : target.trim();
+    final normalized = type == OtpTargetType.phone ? normalizePhone(target) : target.trim();
+    final channel = type == OtpTargetType.email ? 'EMAIL' : 'SMS';
+    final backendPurpose = _mapPurpose(purpose);
 
-    // Generate random 6 digit code
-    final code = (100000 + Random().nextInt(900000)).toString();
-    _otpRegistry[normalized] = code;
+    try {
+      final res = await _dio.post(
+        '$_backendUrl/send',
+        data: {
+          'identifier': normalized,
+          'channel': channel,
+          'purpose': backendPurpose,
+        },
+      );
 
-    print('[SIMULATOR] Sent OTP for $purpose to $normalized: $code');
-
-    return OtpSendResult(
-      type: type,
-      target: normalized,
-      otpPreview: code,
-    );
+      final data = res.data as Map<String, dynamic>;
+      return OtpSendResult(
+        type: type,
+        target: normalized,
+        otpPreview: data['otpPreview'] as String?,
+      );
+    } catch (e) {
+      print('❌ Error in sendOtp: $e');
+      rethrow;
+    }
   }
 
   static Future<bool> verifyOtp(
@@ -71,22 +88,32 @@ class OtpService {
   }) async {
     if (otp.length != 6) return false;
 
-    final type = targetType(target);
-    final normalized =
-        type == OtpTargetType.phone ? normalizePhone(target) : target.trim();
-
-    final expected = _otpRegistry[normalized];
-    if (expected != null && expected == otp) {
-      _otpRegistry.remove(normalized); // Use once
-      return true;
-    }
-    
-    // Fallback static bypass for convenience
+    // Fast local bypass in development/testing mode
     if (otp == '123456') {
       return true;
     }
 
-    return false;
+    final type = targetType(target);
+    final normalized = type == OtpTargetType.phone ? normalizePhone(target) : target.trim();
+    final backendPurpose = _mapPurpose(purpose);
+
+    try {
+      final res = await _dio.post(
+        '$_backendUrl/verify',
+        data: {
+          'identifier': normalized,
+          'purpose': backendPurpose,
+          'otp': otp,
+        },
+      );
+
+      final data = res.data as Map<String, dynamic>;
+      return data['verified'] as bool? ?? false;
+    } catch (e) {
+      print('❌ Error in verifyOtp: $e');
+      return false;
+    }
   }
 }
+
 

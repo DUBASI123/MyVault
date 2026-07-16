@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Exclude backend release APK from git push
+backend/public/MyVault-release.apk
+
