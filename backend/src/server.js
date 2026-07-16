@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 
 import path from 'path';
+import fs from 'fs';
 
 import authRoutes from './routes/auth.routes.js';
 import masterRoutes from './routes/master.routes.js';
@@ -42,34 +43,35 @@ app.get('/', (_, res) => {
 
 app.get('/download-apk', (_, res) => {
   const apkPath = path.join(__dirname, '../public/MyVault-release.apk');
-  res.download(apkPath, 'MyVault-release.apk', (err) => {
-    if (err) {
-      res.setHeader('Content-Type', 'text/html');
-      res.status(200).send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>MyVault APK Download</title>
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #ffffff; text-align: center; padding: 50px; }
-            .card { background-color: #1e1e1e; padding: 40px; border-radius: 16px; display: inline-block; max-width: 500px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border: 1.5px solid #22c55e; }
-            h1 { color: #22c55e; margin-bottom: 20px; }
-            p { font-size: 15px; color: #b3b3b3; line-height: 1.6; }
-            .path { background-color: #2a2a2a; padding: 8px 12px; border-radius: 6px; font-family: monospace; color: #22c55e; margin: 15px 0; word-break: break-all; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <h1>MyVault APK</h1>
-            <p>To keep the repository clean and light, the 71MB release APK is stored directly on your computer's local workspace at:</p>
-            <div class="path">MyVault/backend/public/MyVault-release.apk</div>
-            <p>You can copy this file directly to your phone via USB, or upload it to your personal Google Drive to install it instantly!</p>
-          </div>
-        </body>
-        </html>
-      `);
-    }
-  });
+  
+  if (fs.existsSync(apkPath)) {
+    return res.download(apkPath, 'MyVault-release.apk');
+  }
+
+  res.setHeader('Content-Type', 'text/html');
+  return res.status(200).send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>MyVault APK Download</title>
+      <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #ffffff; text-align: center; padding: 50px; }
+        .card { background-color: #1e1e1e; padding: 40px; border-radius: 16px; display: inline-block; max-width: 500px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border: 1.5px solid #22c55e; }
+        h1 { color: #22c55e; margin-bottom: 20px; }
+        p { font-size: 15px; color: #b3b3b3; line-height: 1.6; }
+        .path { background-color: #2a2a2a; padding: 8px 12px; border-radius: 6px; font-family: monospace; color: #22c55e; margin: 15px 0; word-break: break-all; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h1>MyVault APK</h1>
+        <p>To keep the repository clean and light, the 71MB release APK is stored directly on your computer's local workspace at:</p>
+        <div class="path">MyVault/backend/public/MyVault-release.apk</div>
+        <p>You can copy this file directly to your phone via USB, or upload it to your personal Google Drive to install it instantly!</p>
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 app.get('/api/health/live', async (_req, res, next) => {
