@@ -133,6 +133,13 @@ export async function login(req, res, next) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// FIX: previously, if sendLiveOtpSms / sendLiveOtpEmail threw in production,
+// the error was rethrown and crashed the request as an unhandled 500
+// (DioException [bad response] on the Flutter side). The OTP row is already
+// persisted in the DB by that point, so a delivery failure should be
+// reported as a clean, expected error — not a server crash.
+// ─────────────────────────────────────────────────────────────────────────
 export async function sendOtp(req, res, next) {
   try {
     const { target, purpose = 'reset' } = req.body;
@@ -158,14 +165,26 @@ export async function sendOtp(req, res, next) {
 
     const isEmail = isEmailTarget(normalized);
     let delivery = null;
+    let deliveryFailed = false;
+    let deliveryError = null;
 
     try {
       delivery = isEmail
         ? await sendLiveOtpEmail(normalized, otp)
         : await sendLiveOtpSms(normalized, otp);
     } catch (deliveryErr) {
-      if (process.env.NODE_ENV === 'production') throw deliveryErr;
-      console.warn('OTP delivery fallback (dev):', deliveryErr.message);
+      deliveryFailed = true;
+      deliveryError = deliveryErr.message;
+      console.error('OTP delivery failed:', deliveryErr);
+      // Do NOT rethrow — the OTP is already saved, so don't 500 the request.
+    }
+
+    if (deliveryFailed) {
+      return res.status(502).json({
+        error: 'Failed to send OTP. Please try again in a moment.',
+        target: normalized,
+        detail: process.env.NODE_ENV !== 'production' ? deliveryError : undefined,
+      });
     }
 
     res.json({
@@ -416,5 +435,3 @@ export async function uploadFile(req, res, next) {
     next(err);
   }
 }
-
-
