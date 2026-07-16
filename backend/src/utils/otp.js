@@ -28,8 +28,11 @@ export async function createOtp(identifier, channel, purpose) {
       await sendLiveOtpEmail(identifier, otp);
     }
   } catch (deliveryErr) {
+    console.error('OTP delivery failed:', deliveryErr);
     if (process.env.NODE_ENV === 'production') {
-      throw deliveryErr;
+      const err = new Error('Failed to send OTP. Please try again in a moment.');
+      err.status = 502;
+      throw err;
     }
     console.warn('OTP delivery failed (dev fallback):', deliveryErr.message);
   }
