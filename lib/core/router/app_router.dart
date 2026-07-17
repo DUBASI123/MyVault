@@ -178,11 +178,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.otpVerification,
         builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>;
+          final extra = state.extra as Map<String, dynamic>? ?? {};
           return OtpVerificationScreen(
             identifier: extra['identifier'] as String,
-            purpose: extra['purpose'] as String,
-            onSuccess: extra['onSuccess'] as VoidCallback,
+            channel: extra['channel'] as String? ?? 'email',
+            purpose: extra['purpose'] as String? ?? 'register',
+            onSuccess: extra['onSuccess'] as Future<void> Function()?,
           );
         },
       ),

@@ -1,233 +1,211 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pinput/pinput.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_text_styles.dart';
-import '../../core/services/otp_service.dart';
-import '../../shared/widgets/custom_button.dart';
-import 'data/auth_repository.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/services/otp_service.dart';
+import '../../../shared/widgets/custom_button.dart';
 
-class OtpVerificationScreen extends ConsumerStatefulWidget {
-  final String identifier;
-  final String purpose;
-  final VoidCallback onSuccess;
+class OtpVerificationScreen extends StatefulWidget {
+  final String identifier;              // raw email or normalized 10-digit phone
+  final String channel;                 // 'email' | 'mobile'
+  final String purpose;                 // 'register', 'reset', etc.
+  final Future<void> Function()? onSuccess;
 
   const OtpVerificationScreen({
     super.key,
     required this.identifier,
+    required this.channel,
     required this.purpose,
-    required this.onSuccess,
+    this.onSuccess,
   });
 
   @override
-  ConsumerState<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
-class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
-  final TextEditingController _pinController = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
-  
-  bool _isLoading = false;
-  bool _canResend = false;
-  int _secondsRemaining = 30;
+class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+  final _controllers = List.generate(6, (_) => TextEditingController());
+  final _focusNodes = List.generate(6, (_) => FocusNode());
+
+  bool _isVerifying = false;
+  bool _isResending = false;
+  String? _error;
+  int _secondsLeft = 30;
   Timer? _timer;
-  String? _errorMessage;
+
+  bool get _isEmail => widget.channel == 'email';
+  String get _code => _controllers.map((c) => c.text).join();
 
   @override
   void initState() {
     super.initState();
-    _startTimer();
+    _startResendTimer();
+  }
+
+  void _startResendTimer() {
+    _timer?.cancel();
+    setState(() => _secondsLeft = 30);
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (_secondsLeft <= 1) {
+        t.cancel();
+        setState(() => _secondsLeft = 0);
+      } else {
+        setState(() => _secondsLeft--);
+      }
+    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    _pinController.dispose();
-    _focusNode.dispose();
+    for (final c in _controllers) c.dispose();
+    for (final f in _focusNodes) f.dispose();
     super.dispose();
   }
 
-  void _startTimer() {
-    setState(() {
-      _secondsRemaining = 30;
-      _canResend = false;
-      _errorMessage = null;
-    });
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_secondsRemaining > 0) {
-        setState(() {
-          _secondsRemaining--;
-        });
-      } else {
-        setState(() {
-          _canResend = true;
-        });
-        _timer?.cancel();
-      }
-    });
+  void _onDigitChanged(int index, String value) {
+    if (value.isNotEmpty && index < 5) _focusNodes[index + 1].requestFocus();
+    if (value.isEmpty && index > 0) _focusNodes[index - 1].requestFocus();
+    setState(() => _error = null);
+    if (_code.length == 6) _verify();
   }
 
-  Future<void> _resendOtp() async {
-    if (!_canResend) return;
-
+  Future<void> _verify() async {
+    if (_code.length != 6) {
+      setState(() => _error = 'Enter the full 6-digit code');
+      return;
+    }
     setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+      _isVerifying = true;
+      _error = null;
     });
 
     try {
-      await ref.read(authRepositoryProvider).sendOtp(widget.identifier, purpose: widget.purpose);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Verification code sent to ${widget.identifier}'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
-      _startTimer();
+      if (_isEmail) {
+        await OtpService.verifyEmailOtp(email: widget.identifier, token: _code);
+      } else {
+        await OtpService.verifyPhoneOtp(normalizedPhone: widget.identifier, token: _code);
+      }
+      if (!mounted) return;
+      setState(() => _isVerifying = false);
+      if (widget.onSuccess != null) await widget.onSuccess!();
     } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to resend code: ${e.toString()}';
+        _isVerifying = false;
+        _error = 'Invalid or expired code. Please try again.';
       });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      for (final c in _controllers) c.clear();
+      _focusNodes[0].requestFocus();
     }
   }
 
-  Future<void> _verifyOtp() async {
-    final otp = _pinController.text;
-    if (otp.length != 6) {
-      setState(() {
-        _errorMessage = 'Please enter a 6-digit code';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    final success = await ref.read(authRepositoryProvider).verifyOtp(
-      widget.identifier,
-      otp,
-      purpose: widget.purpose,
-    );
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (success) {
-      widget.onSuccess();
-    } else {
-      setState(() {
-        _errorMessage = 'Invalid or expired verification code';
-      });
+  Future<void> _resend() async {
+    if (_secondsLeft > 0 || _isResending) return;
+    setState(() => _isResending = true);
+    try {
+      if (_isEmail) {
+        await OtpService.resendEmailOtp(widget.identifier);
+      } else {
+        await OtpService.resendPhoneOtp(widget.identifier);
+      }
+      if (mounted) {
+        _startResendTimer();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Code resent')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to resend: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isResending = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEmail = OtpService.targetType(widget.identifier) == OtpTargetType.email;
-    final channelName = isEmail ? 'email address' : 'phone number';
-
-    // Theme values for pinput boxes
-    final defaultPinTheme = PinTheme(
-      width: 48,
-      height: 48,
-      textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white10),
-      ),
-    );
-
-    final focusedPinTheme = defaultPinTheme.copyWith(
-      decoration: defaultPinTheme.decoration!.copyWith(
-        border: Border.all(color: AppColors.primary, width: 1.5),
-      ),
-    );
+    final label = _isEmail ? 'email' : 'mobile number';
+    final display = _isEmail ? widget.identifier : '+91 ${widget.identifier}';
 
     return Scaffold(
-      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        title: Text('Verify ${_isEmail ? 'Email' : 'Mobile'}'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios),
+          onPressed: () => context.pop(),
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              const Text('Enter Code', style: AppTextStyles.heading1),
-              const SizedBox(height: 8),
-              Text(
-                'We sent a 6-digit verification code to your $channelName:',
-                style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Poppins'),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                widget.identifier,
-                style: const TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
-              ),
-              const SizedBox(height: 36),
-              // 6-box input from pinput
-              Center(
-                child: Pinput(
-                  length: 6,
-                  controller: _pinController,
-                  focusNode: _focusNode,
-                  defaultPinTheme: defaultPinTheme,
-                  focusedPinTheme: focusedPinTheme,
-                  keyboardType: TextInputType.number,
-                  hapticFeedbackType: HapticFeedbackType.lightImpact,
-                  onCompleted: (_) => _verifyOtp(),
-                ),
-              ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(_isEmail ? Icons.mark_email_read_outlined : Icons.sms_outlined,
+                color: AppColors.primary, size: 48),
+            const SizedBox(height: 16),
+            Text('Enter the 6-digit code', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(
+              'We sent a verification code to your $label\n$display',
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+            const SizedBox(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(6, _otpBox),
+            ),
+            if (_error != null) ...[
               const SizedBox(height: 16),
-              if (_errorMessage != null)
-                Center(
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontFamily: 'Poppins'),
-                  ),
-                ),
-              const SizedBox(height: 40),
-              CustomButton(
-                text: 'Verify Code',
-                onPressed: _verifyOtp,
-                isLoading: _isLoading,
-                icon: Icons.verified_user_outlined,
-              ),
-              const SizedBox(height: 24),
-              Center(
-                child: TextButton(
-                  onPressed: _canResend ? _resendOtp : null,
-                  child: Text(
-                    _canResend ? 'Resend Verification Code' : 'Resend code in ${_secondsRemaining}s',
-                    style: TextStyle(
-                      color: _canResend ? AppColors.primary : Colors.white38,
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
+              Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
             ],
+            const SizedBox(height: 32),
+            CustomButton(text: 'Verify', isLoading: _isVerifying, onPressed: _verify),
+            const SizedBox(height: 16),
+            Center(
+              child: TextButton(
+                onPressed: _secondsLeft == 0 && !_isResending ? _resend : null,
+                child: Text(
+                  _isResending
+                      ? 'Resending...'
+                      : _secondsLeft > 0
+                          ? 'Resend code in ${_secondsLeft}s'
+                          : 'Resend code',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _otpBox(int index) {
+    return SizedBox(
+      width: 44,
+      height: 52,
+      child: TextField(
+        controller: _controllers[index],
+        focusNode: _focusNodes[index],
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        maxLength: 1,
+        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: InputDecoration(
+          counterText: '',
+          filled: true,
+          fillColor: AppColors.surface,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.primary, width: 2),
           ),
         ),
+        onChanged: (v) => _onDigitChanged(index, v),
       ),
     );
   }

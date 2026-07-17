@@ -9,7 +9,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/services/master_service.dart';
 import '../../../core/storage/app_storage.dart';
 import '../../../shared/models/college_model.dart';
-import '../../../core/services/otp_service.dart';
+import '../../../core/services/otp_service.dart' hide normalizePhoneE164;
 import '../../../shared/models/student_model.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
@@ -205,6 +205,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             AppRoutes.otpVerification,
             extra: {
               'identifier': mobileTarget,
+              'channel': 'mobile',
               'purpose': 'register', // will verify using OtpType.phoneChange
               'onSuccess': () async {
                 Navigator.pop(context); // Pop phone verification screen
@@ -248,6 +249,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           AppRoutes.otpVerification,
           extra: {
             'identifier': emailTarget,
+            'channel': 'email',
             'purpose': 'register', // will verify using OtpType.signup
             'onSuccess': () async {
               Navigator.pop(context); // Pop email verification screen
