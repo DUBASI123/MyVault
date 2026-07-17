@@ -38,7 +38,6 @@ class OtpSendResult {
   final String? verificationId; // unused with Supabase but kept for UI compatibility
   final bool autoVerified;      // always false with Supabase OTP
   final String? otpPreview;     // always null in production
-
   const OtpSendResult({this.verificationId, this.autoVerified = false, this.otpPreview});
 }
 
@@ -54,7 +53,6 @@ String normalizePhoneE164(String raw) {
 bool isEmailTarget(String value) => value.contains('@');
 
 // ─── Current student provider ─────────────────────────────────────────────────
-
 final currentStudentProvider =
     StateNotifierProvider<CurrentStudentNotifier, StudentModel?>(
   (ref) => CurrentStudentNotifier(),
@@ -87,7 +85,6 @@ class CurrentStudentNotifier extends StateNotifier<StudentModel?> {
 }
 
 // ─── Auth repository provider ─────────────────────────────────────────────────
-
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref);
 });
@@ -155,16 +152,14 @@ class AuthRepository {
     try {
       final idCardUrl = await CloudinaryService.uploadFile(File(idCardPath));
       if (idCardUrl == null) throw Exception('Failed to upload Student ID Card.');
-
       final profilePicUrl = await CloudinaryService.uploadFile(File(profilePicPath));
       if (profilePicUrl == null) throw Exception('Failed to upload Profile Photo.');
 
-      final response = await SupabaseService.signUp(
-        email: student.email,
-        password: password,
-      );
-      final user = response.user;
-      if (user == null) throw Exception('Account creation failed. Please try again.');
+      // Update temporary password set during inline verification to user's real password
+      await _db.auth.updateUser(UserAttributes(password: password));
+
+      final user = _db.auth.currentUser;
+      if (user == null) throw Exception('Session expired. Please verify email and mobile again.');
 
       await _db.from('students').insert({
         'id': user.id,
@@ -183,15 +178,18 @@ class AuthRepository {
         'passing_year': student.passingYear,
         'gender': student.gender,
         'state': student.state,
-        'is_mobile_verified': false,
-        'is_email_verified': response.session != null,
+        'is_mobile_verified': true,
+        'is_email_verified': true,
         'profile_pic_url': profilePicUrl,
         'id_card_url': idCardUrl,
         'verification_status': 'Approved',
         'is_verified': true,
       });
 
-      return response;
+      await SupabaseService.signOut();
+      _ref.read(currentStudentProvider.notifier).clear();
+
+      return AuthResponse(user: user);
     } on AuthException catch (e) {
       final msg = e.message.toLowerCase();
       if (msg.contains('rate limit') || msg.contains('over_email_send_rate_limit') || msg.contains('security purposes')) {
@@ -205,84 +203,28 @@ class AuthRepository {
         throw Exception('Registration failed: ${e.message}');
       }
     } on PostgrestException catch (e) {
-      final msg = e.message.toLowerCase();
-      if (msg.contains('students_mobile_key') || msg.contains('mobile')) {
-        throw Exception(
-          'This Mobile Number is already registered.\n\n'
-          '👉 Please use a different mobile number or log in if you already have an account.',
-        );
-      } else if (msg.contains('students_hall_ticket_key') || msg.contains('hall_ticket')) {
-        throw Exception(
-          'This Hall Ticket / Roll Number is already registered.\n\n'
-          '👉 Please verify your Hall Ticket number or contact support.',
-        );
-      } else if (msg.contains('students_email_key') || msg.contains('email')) {
-        throw Exception(
-          'This Email is already registered.\n\n'
-          '👉 Please use a different email or log in if you already have an account.',
-        );
-      } else {
-        throw Exception('Database registration failed: ${e.message}');
-      }
+      throw Exception(_friendlyPostgrestMessage(e));
     } catch (e) {
-      final errStr = e.toString().toLowerCase();
-      if (errStr.contains('students_mobile_key') || errStr.contains('mobile')) {
-        throw Exception(
-          'This Mobile Number is already registered.\n\n'
-          '👉 Please use a different mobile number or log in if you already have an account.',
-        );
-      } else if (errStr.contains('students_hall_ticket_key') || errStr.contains('hall_ticket')) {
-        throw Exception(
-          'This Hall Ticket / Roll Number is already registered.\n\n'
-          '👉 Please verify your Hall Ticket number or contact support.',
-        );
-      } else {
-        throw Exception('Registration failed: $e');
-      }
+      throw Exception(_friendlyGenericMessage(e));
     }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // OTP — now handled entirely by Supabase Auth. No custom backend endpoint,
-  // no otpToken table, no third-party SMS SDK to misconfigure. Supabase's
-  // SMS provider (Twilio/MessageBird/Vonage) is configured once in the
-  // Supabase dashboard under Authentication → Providers → Phone.
+  // Password-reset OTP (separate from registration above)
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Sends an OTP to an email or phone target for password-reset purposes.
-  /// For phone: uses Supabase phone OTP.
-  /// For email: uses Supabase's email OTP (magic-link-style one-time code).
   Future<OtpSendResult> sendOtp(String target, {String purpose = 'reset'}) async {
     try {
-      if (purpose == 'register') {
-        if (isEmailTarget(target)) {
-          await _db.auth.resend(
-            type: OtpType.signup,
-            email: target.trim().toLowerCase(),
-          );
-        } else {
-          await _db.auth.resend(
-            type: OtpType.phoneChange,
-            phone: normalizePhoneE164(target),
-          );
-        }
+      if (isEmailTarget(target)) {
+        await _db.auth.signInWithOtp(
+          email: target.trim().toLowerCase(),
+          shouldCreateUser: false,
+        );
       } else {
-        if (isEmailTarget(target)) {
-          await _db.auth.signInWithOtp(
-            email: target.trim().toLowerCase(),
-            shouldCreateUser: false, // don't create a new account during password reset
-          );
-        } else {
-          // Requires the phone to already be linked + confirmed on the
-          // Supabase Auth user — done via POST /auth/link-phone at
-          // registration time (see `register()` above). If a student
-          // registered BEFORE this linking was added, this will still fail
-          // with "Signups not allowed for otp" until they're backfilled.
-          await _db.auth.signInWithOtp(
-            phone: normalizePhoneE164(target),
-            shouldCreateUser: false,
-          );
-        }
+        await _db.auth.signInWithOtp(
+          phone: normalizePhoneE164(target),
+          shouldCreateUser: false,
+        );
       }
       return const OtpSendResult();
     } on AuthException catch (e) {
@@ -299,13 +241,10 @@ class AuthRepository {
     }
   }
 
-  /// Verifies the OTP entered by the user against Supabase.
-  /// On success for a 'reset' purpose, this also authenticates the session
-  /// so `resetPassword` below can update the password directly.
   Future<bool> verifyOtp(
     String target,
     String otp, {
-    String? verificationId, // unused, kept for call-site compatibility
+    String? verificationId,
     String purpose = 'reset',
   }) async {
     try {
@@ -314,13 +253,13 @@ class AuthRepository {
         response = await _db.auth.verifyOTP(
           email: target.trim().toLowerCase(),
           token: otp,
-          type: purpose == 'register' ? OtpType.signup : OtpType.email,
+          type: OtpType.email,
         );
       } else {
         response = await _db.auth.verifyOTP(
           phone: normalizePhoneE164(target),
           token: otp,
-          type: purpose == 'register' ? OtpType.phoneChange : OtpType.sms,
+          type: OtpType.sms,
         );
       }
       return response.session != null;
@@ -330,7 +269,7 @@ class AuthRepository {
         throw Exception('OTP has expired. Please request a new one.');
       }
       if (msg.contains('invalid') || msg.contains('token')) {
-        return false; // invalid code — let UI show "Invalid OTP"
+        return false;
       }
       throw Exception('OTP verification failed: ${e.message}');
     } catch (e) {
@@ -338,8 +277,6 @@ class AuthRepository {
     }
   }
 
-  /// Updates the password for the now-authenticated session created by
-  /// verifyOtp above. Must be called immediately after a successful verify.
   Future<void> resetPassword(
     String contact,
     String otp,
@@ -351,11 +288,49 @@ class AuthRepository {
     }
     try {
       await _db.auth.updateUser(UserAttributes(password: newPassword));
-      // Sign out so the user has to log in fresh with the new password.
       await SupabaseService.signOut();
       _ref.read(currentStudentProvider.notifier).clear();
     } on AuthException catch (e) {
       throw Exception('Failed to reset password: ${e.message}');
     }
+  }
+
+  // ─── Shared error formatting ────────────────────────────────────────────
+  String _friendlyAuthMessage(AuthException e) {
+    final msg = e.message.toLowerCase();
+    if (msg.contains('rate limit') || msg.contains('over_email_send_rate_limit') || msg.contains('security purposes')) {
+      return 'Too many attempts. Please wait a few minutes and try again.';
+    } else if (msg.contains('already registered') || msg.contains('user_already_exists')) {
+      return 'This email or mobile is already registered.\n\n'
+          '👉 Please proceed to the Login page to sign in, or use a different email/mobile.';
+    }
+    return e.message;
+  }
+
+  String _friendlyPostgrestMessage(PostgrestException e) {
+    final msg = e.message.toLowerCase();
+    if (msg.contains('students_mobile_key') || msg.contains('mobile')) {
+      return 'This Mobile Number is already registered.\n\n'
+          '👉 Please use a different mobile number or log in if you already have an account.';
+    } else if (msg.contains('students_hall_ticket_key') || msg.contains('hall_ticket')) {
+      return 'This Hall Ticket / Roll Number is already registered.\n\n'
+          '👉 Please verify your Hall Ticket number or contact support.';
+    } else if (msg.contains('students_email_key') || msg.contains('email')) {
+      return 'This Email is already registered.\n\n'
+          '👉 Please use a different email or log in if you already have an account.';
+    }
+    return 'Database registration failed: ${e.message}';
+  }
+
+  String _friendlyGenericMessage(Object e) {
+    final errStr = e.toString().toLowerCase();
+    if (errStr.contains('students_mobile_key') || errStr.contains('mobile')) {
+      return 'This Mobile Number is already registered.\n\n'
+          '👉 Please use a different mobile number or log in if you already have an account.';
+    } else if (errStr.contains('students_hall_ticket_key') || errStr.contains('hall_ticket')) {
+      return 'This Hall Ticket / Roll Number is already registered.\n\n'
+          '👉 Please verify your Hall Ticket number or contact support.';
+    }
+    return 'Registration failed: $e';
   }
 }

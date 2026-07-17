@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +10,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/services/master_service.dart';
 import '../../../core/storage/app_storage.dart';
 import '../../../shared/models/college_model.dart';
-import '../../../core/services/otp_service.dart' hide normalizePhoneE164;
+import '../../../core/services/otp_service.dart';
 import '../../../shared/models/student_model.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
@@ -37,6 +38,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
 
+  // --- OTP verification state ---
+  final _mobileOtpController = TextEditingController();
+  final _emailOtpController = TextEditingController();
+
+  bool _mobileOtpSent = false;
+  bool _emailOtpSent = false;
+  bool _mobileVerified = false;
+  bool _emailVerified = false;
+  bool _sendingMobileOtp = false;
+  bool _sendingEmailOtp = false;
+  bool _verifyingMobileOtp = false;
+  bool _verifyingEmailOtp = false;
+  int _mobileResendCooldown = 0;
+  int _emailResendCooldown = 0;
+  Timer? _mobileCooldownTimer;
+  Timer? _emailCooldownTimer;
+  String? _lastVerifiedMobile;
+  String? _lastVerifiedEmail;
+
   String? _university;
   String? _college;
   String? _universityId;
@@ -56,6 +76,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   void initState() {
     super.initState();
     _loadColleges();
+    _mobile.addListener(_onMobileChanged);
+    _email.addListener(_onEmailChanged);
   }
 
   Future<void> _loadColleges() async {
@@ -81,17 +103,49 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
   }
 
+  // If the user edits the mobile/email after verifying it, invalidate the
+  // previous verification so they can't sneak an unverified value through.
+  void _onMobileChanged() {
+    if (_mobileVerified && _mobile.text.trim() != _lastVerifiedMobile) {
+      setState(() {
+        _mobileVerified = false;
+        _mobileOtpSent = false;
+        _mobileOtpController.clear();
+      });
+      _mobileCooldownTimer?.cancel();
+      _mobileResendCooldown = 0;
+    }
+  }
+
+  void _onEmailChanged() {
+    if (_emailVerified && _email.text.trim() != _lastVerifiedEmail) {
+      setState(() {
+        _emailVerified = false;
+        _emailOtpSent = false;
+        _emailOtpController.clear();
+      });
+      _emailCooldownTimer?.cancel();
+      _emailResendCooldown = 0;
+    }
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
     _firstName.dispose();
     _lastName.dispose();
     _aadharName.dispose();
+    _mobile.removeListener(_onMobileChanged);
+    _email.removeListener(_onEmailChanged);
     _mobile.dispose();
     _email.dispose();
     _hallTicket.dispose();
     _password.dispose();
     _confirmPassword.dispose();
+    _mobileOtpController.dispose();
+    _emailOtpController.dispose();
+    _mobileCooldownTimer?.cancel();
+    _emailCooldownTimer?.cancel();
     super.dispose();
   }
 
@@ -102,6 +156,156 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       curve: Curves.easeInOut,
     );
     setState(() => _currentPage = page);
+  }
+
+  // --- Mobile OTP ---
+
+  Future<void> _sendMobileOtp() async {
+    final raw = _mobile.text.trim();
+    if (raw.isEmpty) {
+      _snack('Enter your mobile number first', error: true);
+      return;
+    }
+    setState(() => _sendingMobileOtp = true);
+    try {
+      final normalized = OtpService.normalizePhone(raw);
+      await OtpService.sendOtp(identifier: normalized, channel: 'mobile');
+      if (!mounted) return;
+      setState(() {
+        _mobileOtpSent = true;
+        _sendingMobileOtp = false;
+      });
+      _startMobileCooldown();
+      _snack('OTP sent to your mobile number');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _sendingMobileOtp = false);
+      _snack('Failed to send OTP: ${e.toString()}', error: true);
+    }
+  }
+
+  Future<void> _verifyMobileOtp() async {
+    final code = _mobileOtpController.text.trim();
+    if (code.isEmpty) {
+      _snack('Enter the OTP sent to your mobile', error: true);
+      return;
+    }
+    setState(() => _verifyingMobileOtp = true);
+    try {
+      final normalized = OtpService.normalizePhone(_mobile.text.trim());
+      final ok = await OtpService.verifyOtp(
+        identifier: normalized,
+        otp: code,
+        channel: 'mobile',
+      );
+      if (!mounted) return;
+      setState(() => _verifyingMobileOtp = false);
+      if (ok) {
+        setState(() {
+          _mobileVerified = true;
+          _lastVerifiedMobile = _mobile.text.trim();
+        });
+        _mobileCooldownTimer?.cancel();
+        _snack('Mobile number verified');
+      } else {
+        _snack('Incorrect OTP, please try again', error: true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _verifyingMobileOtp = false);
+      _snack('Verification failed: ${e.toString()}', error: true);
+    }
+  }
+
+  void _startMobileCooldown() {
+    _mobileCooldownTimer?.cancel();
+    setState(() => _mobileResendCooldown = 30);
+    _mobileCooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      if (_mobileResendCooldown <= 1) {
+        t.cancel();
+        setState(() => _mobileResendCooldown = 0);
+      } else {
+        setState(() => _mobileResendCooldown--);
+      }
+    });
+  }
+
+  // --- Email OTP ---
+
+  Future<void> _sendEmailOtp() async {
+    final raw = _email.text.trim();
+    if (raw.isEmpty) {
+      _snack('Enter your email first', error: true);
+      return;
+    }
+    setState(() => _sendingEmailOtp = true);
+    try {
+      await OtpService.sendOtp(identifier: raw, channel: 'email');
+      if (!mounted) return;
+      setState(() {
+        _emailOtpSent = true;
+        _sendingEmailOtp = false;
+      });
+      _startEmailCooldown();
+      _snack('OTP sent to your email');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _sendingEmailOtp = false);
+      _snack('Failed to send OTP: ${e.toString()}', error: true);
+    }
+  }
+
+  Future<void> _verifyEmailOtp() async {
+    final code = _emailOtpController.text.trim();
+    if (code.isEmpty) {
+      _snack('Enter the OTP sent to your email', error: true);
+      return;
+    }
+    setState(() => _verifyingEmailOtp = true);
+    try {
+      final ok = await OtpService.verifyOtp(
+        identifier: _email.text.trim(),
+        otp: code,
+        channel: 'email',
+      );
+      if (!mounted) return;
+      setState(() => _verifyingEmailOtp = false);
+      if (ok) {
+        setState(() {
+          _emailVerified = true;
+          _lastVerifiedEmail = _email.text.trim();
+        });
+        _emailCooldownTimer?.cancel();
+        _snack('Email verified');
+      } else {
+        _snack('Incorrect OTP, please try again', error: true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _verifyingEmailOtp = false);
+      _snack('Verification failed: ${e.toString()}', error: true);
+    }
+  }
+
+  void _startEmailCooldown() {
+    _emailCooldownTimer?.cancel();
+    setState(() => _emailResendCooldown = 30);
+    _emailCooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      if (_emailResendCooldown <= 1) {
+        t.cancel();
+        setState(() => _emailResendCooldown = 0);
+      } else {
+        setState(() => _emailResendCooldown--);
+      }
+    });
   }
 
   Future<void> _pickStudentId() async {
@@ -140,6 +344,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _snack('Please upload your Profile Photo', error: true);
       return;
     }
+    if (!_mobileVerified || !_emailVerified) {
+      _snack('Please verify your mobile and email before submitting', error: true);
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -165,14 +373,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         yearOfStudy: int.tryParse(_year ?? '1') ?? 1,
         gender: _gender ?? '',
         state: _state ?? '',
-        isMobileVerified: false,
-        isEmailVerified: false,
+        // Both were already verified via OTP in Step 1.
+        isMobileVerified: true,
+        isEmailVerified: true,
         verificationStatus: 'Approved',
         isVerified: true,
         createdAt: DateTime.now(),
       );
 
-      // 1. Initial register (creates email auth user + student DB record)
       final response = await ref.read(authRepositoryProvider).register(
         student,
         _password.text,
@@ -183,85 +391,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final user = response.user;
       if (user == null) throw Exception('Failed to sign up user.');
 
-      setState(() => _isLoading = false);
+      await AppStorage.instance.clearSession();
+      await Supabase.instance.client.auth.signOut();
+      ref.read(currentStudentProvider.notifier).clear();
 
       if (!mounted) return;
-
-      // Define final step to link and confirm phone and complete account setup
-      Future<void> startPhoneVerificationFlow() async {
-        setState(() => _isLoading = true);
-        try {
-          // 3. Initiate phone linking/verification OTP
-          await Supabase.instance.client.auth.updateUser(
-            UserAttributes(phone: normalizePhoneE164(mobileTarget)),
-          );
-
-          setState(() => _isLoading = false);
-
-          if (!mounted) return;
-
-          // 4. Open Mobile OTP Verification Screen
-          context.push(
-            AppRoutes.otpVerification,
-            extra: {
-              'identifier': mobileTarget,
-              'channel': 'mobile',
-              'purpose': 'register', // will verify using OtpType.phoneChange
-              'onSuccess': () async {
-                Navigator.pop(context); // Pop phone verification screen
-
-                setState(() => _isLoading = true);
-                try {
-                  // 5. Update verification flags in database
-                  await Supabase.instance.client
-                      .from('students')
-                      .update({
-                        'is_mobile_verified': true,
-                        'is_email_verified': true,
-                      })
-                      .eq('id', user.id);
-
-                  await AppStorage.instance.clearSession();
-                  await Supabase.instance.client.auth.signOut();
-                  ref.read(currentStudentProvider.notifier).clear();
-
-                  if (mounted) {
-                    context.go(AppRoutes.login);
-                    _snack('Registration completed successfully! Please log in.');
-                  }
-                } catch (e) {
-                  _snack('Failed to complete registration: $e', error: true);
-                } finally {
-                  if (mounted) setState(() => _isLoading = false);
-                }
-              }
-            }
-          );
-        } catch (e) {
-          setState(() => _isLoading = false);
-          _snack('Failed to start phone verification: ${e.toString()}', error: true);
-        }
-      }
-
-      // 2. Open Email Verification Screen if not auto-confirmed
-      if (response.session == null) {
-        context.push(
-          AppRoutes.otpVerification,
-          extra: {
-            'identifier': emailTarget,
-            'channel': 'email',
-            'purpose': 'register', // will verify using OtpType.signup
-            'onSuccess': () async {
-              Navigator.pop(context); // Pop email verification screen
-              await startPhoneVerificationFlow();
-            }
-          }
-        );
-      } else {
-        // Already auto-confirmed (e.g. email confirmations disabled in Supabase)
-        await startPhoneVerificationFlow();
-      }
+      setState(() => _isLoading = false);
+      context.go(AppRoutes.login);
+      _snack('Registration completed successfully! Please log in.');
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       _snack('Failed to register: ${e.toString()}', error: true);
     }
@@ -297,6 +436,96 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
+  // Reusable OTP send / verify block, used for both mobile and email.
+  Widget _otpVerificationBlock({
+    required String label,
+    required TextEditingController otpController,
+    required bool sent,
+    required bool verified,
+    required bool sending,
+    required bool verifying,
+    required int cooldown,
+    required VoidCallback onSend,
+    required VoidCallback onVerify,
+  }) {
+    if (verified) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 6, bottom: 4),
+        child: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 18),
+            SizedBox(width: 6),
+            Text(
+              'Verified',
+              style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (!sent) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 6, bottom: 4),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: sending ? null : onSend,
+            icon: sending
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.sms_outlined, size: 16),
+            label: Text(sending ? 'Sending OTP...' : 'Verify $label'),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: TextField(
+              controller: otpController,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              decoration: const InputDecoration(
+                isDense: true,
+                counterText: '',
+                hintText: 'Enter OTP',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            height: 40,
+            child: ElevatedButton(
+              onPressed: verifying ? null : onVerify,
+              child: verifying
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Verify'),
+            ),
+          ),
+          const SizedBox(width: 4),
+          TextButton(
+            onPressed: cooldown > 0 ? null : onSend,
+            child: Text(cooldown > 0 ? 'Resend (${cooldown}s)' : 'Resend'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _page1() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -315,12 +544,34 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             keyboardType: TextInputType.phone,
             isRequired: true,
           ),
+          _otpVerificationBlock(
+            label: 'Mobile',
+            otpController: _mobileOtpController,
+            sent: _mobileOtpSent,
+            verified: _mobileVerified,
+            sending: _sendingMobileOtp,
+            verifying: _verifyingMobileOtp,
+            cooldown: _mobileResendCooldown,
+            onSend: _sendMobileOtp,
+            onVerify: _verifyMobileOtp,
+          ),
           const SizedBox(height: 12),
           CustomTextField(
             label: 'Email',
             controller: _email,
             keyboardType: TextInputType.emailAddress,
             isRequired: true,
+          ),
+          _otpVerificationBlock(
+            label: 'Email',
+            otpController: _emailOtpController,
+            sent: _emailOtpSent,
+            verified: _emailVerified,
+            sending: _sendingEmailOtp,
+            verifying: _verifyingEmailOtp,
+            cooldown: _emailResendCooldown,
+            onSend: _sendEmailOtp,
+            onVerify: _verifyEmailOtp,
           ),
           const SizedBox(height: 20),
           DropdownButtonFormField<String>(
@@ -343,6 +594,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               }
               if (_mobile.text.trim().isEmpty || _email.text.trim().isEmpty) {
                 _snack('Please fill in Mobile and Email', error: true);
+                return;
+              }
+              if (!_mobileVerified) {
+                _snack('Please verify your mobile number', error: true);
+                return;
+              }
+              if (!_emailVerified) {
+                _snack('Please verify your email', error: true);
                 return;
               }
               if (_college == null) {

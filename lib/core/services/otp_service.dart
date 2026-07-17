@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OtpService {
   static final SupabaseClient _client = Supabase.instance.client;
+  static const String tempPassword = 'TempPassword123!';
 
   /// Normalizes any raw input into a clean 10-digit Indian mobile number.
   static String normalizePhone(String raw) {
@@ -17,6 +18,73 @@ class OtpService {
 
   /// Converts a normalized 10-digit number to E.164 for Supabase.
   static String toE164(String normalized) => '+91${normalizePhone(normalized)}';
+
+  /// Sends an OTP code. If the user is not authenticated, triggers signUp (primary).
+  /// If the user is authenticated, triggers updateUser (secondary linking).
+  static Future<void> sendOtp({
+    required String identifier,
+    required String channel,
+  }) async {
+    final user = _client.auth.currentUser;
+    if (channel == 'email') {
+      final email = identifier.trim().toLowerCase();
+      if (user == null) {
+        await _client.auth.signUp(email: email, password: tempPassword);
+      } else {
+        await _client.auth.updateUser(UserAttributes(email: email));
+      }
+    } else {
+      final phone = toE164(identifier);
+      if (user == null) {
+        await _client.auth.signUp(phone: phone, password: tempPassword);
+      } else {
+        await _client.auth.updateUser(UserAttributes(phone: phone));
+      }
+    }
+  }
+
+  /// Verifies an OTP code. Uses signup/sms for primary, emailChange/phoneChange for secondary.
+  static Future<bool> verifyOtp({
+    required String identifier,
+    required String otp,
+    required String channel,
+  }) async {
+    final user = _client.auth.currentUser;
+    final AuthResponse response;
+
+    if (channel == 'email') {
+      final email = identifier.trim().toLowerCase();
+      if (user == null || user.email != email) {
+        response = await _client.auth.verifyOTP(
+          email: email,
+          token: otp,
+          type: OtpType.signup,
+        );
+      } else {
+        response = await _client.auth.verifyOTP(
+          email: email,
+          token: otp,
+          type: OtpType.emailChange,
+        );
+      }
+    } else {
+      final phone = toE164(identifier);
+      if (user == null || user.phone != phone) {
+        response = await _client.auth.verifyOTP(
+          phone: phone,
+          token: otp,
+          type: OtpType.sms,
+        );
+      } else {
+        response = await _client.auth.verifyOTP(
+          phone: phone,
+          token: otp,
+          type: OtpType.phoneChange,
+        );
+      }
+    }
+    return response.session != null;
+  }
 
   // ---------- EMAIL ----------
 
