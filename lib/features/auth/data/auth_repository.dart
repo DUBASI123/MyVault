@@ -146,7 +146,7 @@ class AuthRepository {
   }
 
   // ── Register ───────────────────────────────────────────────────────────────
-  Future<StudentModel> register(
+  Future<AuthResponse> register(
     StudentModel student,
     String password, {
     required String idCardPath,
@@ -166,19 +166,6 @@ class AuthRepository {
       final user = response.user;
       if (user == null) throw Exception('Account creation failed. Please try again.');
 
-      // Link + auto-confirm the phone number as a Supabase Auth identity so
-      // mobile-based OTP (e.g. Forgot Password) works later. Non-fatal if
-      // it fails — registration itself already succeeded via email.
-      try {
-        await http.post(
-          Uri.parse('$_backendBaseUrl/auth/link-phone'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'userId': user.id, 'phone': student.mobile}),
-        );
-      } catch (_) {
-        // Swallow — phone linking is best-effort; don't block registration.
-      }
-
       await _db.from('students').insert({
         'id': user.id,
         'first_name': student.firstName,
@@ -196,24 +183,15 @@ class AuthRepository {
         'passing_year': student.passingYear,
         'gender': student.gender,
         'state': student.state,
-        'is_mobile_verified': student.isMobileVerified,
-        'is_email_verified': student.isEmailVerified,
+        'is_mobile_verified': false,
+        'is_email_verified': response.session != null,
         'profile_pic_url': profilePicUrl,
         'id_card_url': idCardUrl,
         'verification_status': 'Approved',
         'is_verified': true,
       });
 
-      await SupabaseService.signOut();
-      _ref.read(currentStudentProvider.notifier).clear();
-
-      return student.copyWith(
-        id: user.id,
-        profilePicUrl: profilePicUrl,
-        idCardUrl: idCardUrl,
-        verificationStatus: 'Approved',
-        isVerified: true,
-      );
+      return response;
     } on AuthException catch (e) {
       final msg = e.message.toLowerCase();
       if (msg.contains('rate limit') || msg.contains('over_email_send_rate_limit') || msg.contains('security purposes')) {
@@ -276,21 +254,35 @@ class AuthRepository {
   /// For email: uses Supabase's email OTP (magic-link-style one-time code).
   Future<OtpSendResult> sendOtp(String target, {String purpose = 'reset'}) async {
     try {
-      if (isEmailTarget(target)) {
-        await _db.auth.signInWithOtp(
-          email: target.trim().toLowerCase(),
-          shouldCreateUser: false, // don't create a new account during password reset
-        );
+      if (purpose == 'register') {
+        if (isEmailTarget(target)) {
+          await _db.auth.resend(
+            type: OtpType.signup,
+            email: target.trim().toLowerCase(),
+          );
+        } else {
+          await _db.auth.resend(
+            type: OtpType.phoneChange,
+            phone: normalizePhoneE164(target),
+          );
+        }
       } else {
-        // Requires the phone to already be linked + confirmed on the
-        // Supabase Auth user — done via POST /auth/link-phone at
-        // registration time (see `register()` above). If a student
-        // registered BEFORE this linking was added, this will still fail
-        // with "Signups not allowed for otp" until they're backfilled.
-        await _db.auth.signInWithOtp(
-          phone: normalizePhoneE164(target),
-          shouldCreateUser: false,
-        );
+        if (isEmailTarget(target)) {
+          await _db.auth.signInWithOtp(
+            email: target.trim().toLowerCase(),
+            shouldCreateUser: false, // don't create a new account during password reset
+          );
+        } else {
+          // Requires the phone to already be linked + confirmed on the
+          // Supabase Auth user — done via POST /auth/link-phone at
+          // registration time (see `register()` above). If a student
+          // registered BEFORE this linking was added, this will still fail
+          // with "Signups not allowed for otp" until they're backfilled.
+          await _db.auth.signInWithOtp(
+            phone: normalizePhoneE164(target),
+            shouldCreateUser: false,
+          );
+        }
       }
       return const OtpSendResult();
     } on AuthException catch (e) {
@@ -322,13 +314,13 @@ class AuthRepository {
         response = await _db.auth.verifyOTP(
           email: target.trim().toLowerCase(),
           token: otp,
-          type: OtpType.email,
+          type: purpose == 'register' ? OtpType.signup : OtpType.email,
         );
       } else {
         response = await _db.auth.verifyOTP(
           phone: normalizePhoneE164(target),
           token: otp,
-          type: OtpType.sms,
+          type: purpose == 'register' ? OtpType.phoneChange : OtpType.sms,
         );
       }
       return response.session != null;

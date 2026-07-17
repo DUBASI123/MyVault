@@ -13,6 +13,7 @@ import '../../../core/services/otp_service.dart';
 import '../../../shared/models/student_model.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/auth_repository.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -141,144 +142,126 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
 
     setState(() => _isLoading = true);
-    
+
+    final emailTarget = _email.text.trim();
     final mobileTarget = OtpService.normalizePhone(_mobile.text.trim());
 
     try {
-      // 1. Send OTP to the mobile number
-      await ref.read(authRepositoryProvider).sendOtp(mobileTarget, purpose: 'register');
-      
+      final student = StudentModel(
+        id: '',
+        firstName: _firstName.text.trim(),
+        lastName: _lastName.text.trim(),
+        fullNameAadhar: _aadharName.text.trim(),
+        mobile: mobileTarget,
+        email: emailTarget,
+        hallTicket: _hallTicket.text.trim(),
+        universityId: _universityId ?? '1',
+        collegeId: _collegeId ?? 'c_1',
+        universityName: _university ?? '',
+        collegeName: _college ?? '',
+        course: _course ?? 'B.Tech',
+        branch: _branch ?? 'CSE',
+        semester: int.tryParse(_semester ?? '1') ?? 1,
+        yearOfStudy: int.tryParse(_year ?? '1') ?? 1,
+        gender: _gender ?? '',
+        state: _state ?? '',
+        isMobileVerified: false,
+        isEmailVerified: false,
+        verificationStatus: 'Approved',
+        isVerified: true,
+        createdAt: DateTime.now(),
+      );
+
+      // 1. Initial register (creates email auth user + student DB record)
+      final response = await ref.read(authRepositoryProvider).register(
+        student,
+        _password.text,
+        idCardPath: _studentIdPath!,
+        profilePicPath: _profilePhotoPath!,
+      );
+
+      final user = response.user;
+      if (user == null) throw Exception('Failed to sign up user.');
+
       setState(() => _isLoading = false);
-      
+
       if (!mounted) return;
 
-      // 2. Open OTP Verification Screen
-      context.push(
-        AppRoutes.otpVerification,
-        extra: {
-          'identifier': mobileTarget,
-          'purpose': 'register',
-          'onSuccess': () async {
-            // Success! Pop the verification screen
-            Navigator.pop(context);
+      // Define final step to link and confirm phone and complete account setup
+      Future<void> startPhoneVerificationFlow() async {
+        setState(() => _isLoading = true);
+        try {
+          // 3. Initiate phone linking/verification OTP
+          await Supabase.instance.client.auth.updateUser(
+            UserAttributes(phone: normalizePhoneE164(mobileTarget)),
+          );
 
-            setState(() => _isLoading = true);
+          setState(() => _isLoading = false);
 
-            try {
-              final student = StudentModel(
-                id: '',
-                firstName: _firstName.text.trim(),
-                lastName: _lastName.text.trim(),
-                fullNameAadhar: _aadharName.text.trim(),
-                mobile: OtpService.normalizePhone(_mobile.text.trim()),
-                email: _email.text.trim(),
-                hallTicket: _hallTicket.text.trim(),
-                universityId: _universityId ?? '1',
-                collegeId: _collegeId ?? 'c_1',
-                universityName: _university ?? '',
-                collegeName: _college ?? '',
-                course: _course ?? 'B.Tech',
-                branch: _branch ?? 'CSE',
-                semester: int.tryParse(_semester ?? '1') ?? 1,
-                yearOfStudy: int.tryParse(_year ?? '1') ?? 1,
-                gender: _gender ?? '',
-                state: _state ?? '',
-                isMobileVerified: true,
-                isEmailVerified: true,
-                verificationStatus: 'Approved',
-                isVerified: true,
-                createdAt: DateTime.now(),
-              );
+          if (!mounted) return;
 
-              await ref.read(authRepositoryProvider).register(
-                student,
-                _password.text,
-                idCardPath: _studentIdPath!,
-                profilePicPath: _profilePhotoPath!,
-              );
+          // 4. Open Mobile OTP Verification Screen
+          context.push(
+            AppRoutes.otpVerification,
+            extra: {
+              'identifier': mobileTarget,
+              'purpose': 'register', // will verify using OtpType.phoneChange
+              'onSuccess': () async {
+                Navigator.pop(context); // Pop phone verification screen
 
-              // Clear session storage
-              await AppStorage.instance.clearSession();
+                setState(() => _isLoading = true);
+                try {
+                  // 5. Update verification flags in database
+                  await Supabase.instance.client
+                      .from('students')
+                      .update({
+                        'is_mobile_verified': true,
+                        'is_email_verified': true,
+                      })
+                      .eq('id', user.id);
 
-              if (mounted) {
-                // Immediately go to login
-                context.go(AppRoutes.login);
+                  await AppStorage.instance.clearSession();
+                  await Supabase.instance.client.auth.signOut();
+                  ref.read(currentStudentProvider.notifier).clear();
 
-                // Show a beautiful green success SnackBar
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    behavior: SnackBarBehavior.floating,
-                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    duration: const Duration(seconds: 5),
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    content: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF22C55E), Color(0xFF15803D)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF22C55E).withOpacity(0.4),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: Colors.white24,
-                            radius: 18,
-                            child: Icon(Icons.check_rounded, color: Colors.white, size: 20),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Registration Completed!',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                SizedBox(height: 3),
-                                Text(
-                                  'Your mobile number is verified. Log in with your credentials.',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
+                  if (mounted) {
+                    context.go(AppRoutes.login);
+                    _snack('Registration completed successfully! Please log in.');
+                  }
+                } catch (e) {
+                  _snack('Failed to complete registration: $e', error: true);
+                } finally {
+                  if (mounted) setState(() => _isLoading = false);
+                }
               }
-            } catch (e) {
-              _snack('Registration failed: ${e.toString()}', error: true);
-            } finally {
-              if (mounted) setState(() => _isLoading = false);
+            }
+          );
+        } catch (e) {
+          setState(() => _isLoading = false);
+          _snack('Failed to start phone verification: ${e.toString()}', error: true);
+        }
+      }
+
+      // 2. Open Email Verification Screen if not auto-confirmed
+      if (response.session == null) {
+        context.push(
+          AppRoutes.otpVerification,
+          extra: {
+            'identifier': emailTarget,
+            'purpose': 'register', // will verify using OtpType.signup
+            'onSuccess': () async {
+              Navigator.pop(context); // Pop email verification screen
+              await startPhoneVerificationFlow();
             }
           }
-        },
-      );
+        );
+      } else {
+        // Already auto-confirmed (e.g. email confirmations disabled in Supabase)
+        await startPhoneVerificationFlow();
+      }
     } catch (e) {
       setState(() => _isLoading = false);
-      _snack('Failed to send verification code: ${e.toString()}', error: true);
+      _snack('Failed to register: ${e.toString()}', error: true);
     }
   }
 
