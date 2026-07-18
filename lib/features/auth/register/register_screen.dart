@@ -470,12 +470,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         child: Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              textStyle: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             onPressed: sending ? null : onSend,
             icon: sending
                 ? const SizedBox(
                     width: 14,
                     height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
                   )
                 : const Icon(Icons.sms_outlined, size: 16),
             label: Text(sending ? 'Sending OTP...' : 'Verify $label'),
@@ -519,6 +523,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           const SizedBox(width: 4),
           TextButton(
             onPressed: cooldown > 0 ? null : onSend,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+            ),
             child: Text(cooldown > 0 ? 'Resend (${cooldown}s)' : 'Resend'),
           ),
         ],
