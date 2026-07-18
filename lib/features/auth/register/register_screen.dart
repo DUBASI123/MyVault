@@ -14,8 +14,9 @@ import '../../../core/services/otp_service.dart';
 import '../../../shared/models/student_model.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide OtpChannel;
 import '../data/auth_repository.dart';
+import 'otp_verification_block.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -39,23 +40,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _confirmPassword = TextEditingController();
 
   // --- OTP verification state ---
-  final _mobileOtpController = TextEditingController();
-  final _emailOtpController = TextEditingController();
-
-  bool _mobileOtpSent = false;
-  bool _emailOtpSent = false;
   bool _mobileVerified = false;
   bool _emailVerified = false;
-  bool _sendingMobileOtp = false;
-  bool _sendingEmailOtp = false;
-  bool _verifyingMobileOtp = false;
-  bool _verifyingEmailOtp = false;
-  int _mobileResendCooldown = 0;
-  int _emailResendCooldown = 0;
-  Timer? _mobileCooldownTimer;
-  Timer? _emailCooldownTimer;
-  String? _lastVerifiedMobile;
-  String? _lastVerifiedEmail;
 
   String? _university;
   String? _college;
@@ -106,26 +92,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   // If the user edits the mobile/email after verifying it, invalidate the
   // previous verification so they can't sneak an unverified value through.
   void _onMobileChanged() {
-    if (_mobileVerified && _mobile.text.trim() != _lastVerifiedMobile) {
+    if (_mobileVerified) {
       setState(() {
         _mobileVerified = false;
-        _mobileOtpSent = false;
-        _mobileOtpController.clear();
       });
-      _mobileCooldownTimer?.cancel();
-      _mobileResendCooldown = 0;
     }
   }
 
   void _onEmailChanged() {
-    if (_emailVerified && _email.text.trim() != _lastVerifiedEmail) {
+    if (_emailVerified) {
       setState(() {
         _emailVerified = false;
-        _emailOtpSent = false;
-        _emailOtpController.clear();
       });
-      _emailCooldownTimer?.cancel();
-      _emailResendCooldown = 0;
     }
   }
 
@@ -142,10 +120,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _hallTicket.dispose();
     _password.dispose();
     _confirmPassword.dispose();
-    _mobileOtpController.dispose();
-    _emailOtpController.dispose();
-    _mobileCooldownTimer?.cancel();
-    _emailCooldownTimer?.cancel();
     super.dispose();
   }
 
@@ -156,156 +130,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       curve: Curves.easeInOut,
     );
     setState(() => _currentPage = page);
-  }
-
-  // --- Mobile OTP ---
-
-  Future<void> _sendMobileOtp() async {
-    final raw = _mobile.text.trim();
-    if (raw.isEmpty) {
-      _snack('Enter your mobile number first', error: true);
-      return;
-    }
-    setState(() => _sendingMobileOtp = true);
-    try {
-      final normalized = OtpService.normalizePhone(raw);
-      await OtpService.sendOtp(identifier: normalized, channel: 'mobile');
-      if (!mounted) return;
-      setState(() {
-        _mobileOtpSent = true;
-        _sendingMobileOtp = false;
-      });
-      _startMobileCooldown();
-      _snack('OTP sent to your mobile number');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _sendingMobileOtp = false);
-      _snack('Failed to send OTP: ${e.toString()}', error: true);
-    }
-  }
-
-  Future<void> _verifyMobileOtp() async {
-    final code = _mobileOtpController.text.trim();
-    if (code.isEmpty) {
-      _snack('Enter the OTP sent to your mobile', error: true);
-      return;
-    }
-    setState(() => _verifyingMobileOtp = true);
-    try {
-      final normalized = OtpService.normalizePhone(_mobile.text.trim());
-      final ok = await OtpService.verifyOtp(
-        identifier: normalized,
-        otp: code,
-        channel: 'mobile',
-      );
-      if (!mounted) return;
-      setState(() => _verifyingMobileOtp = false);
-      if (ok) {
-        setState(() {
-          _mobileVerified = true;
-          _lastVerifiedMobile = _mobile.text.trim();
-        });
-        _mobileCooldownTimer?.cancel();
-        _snack('Mobile number verified');
-      } else {
-        _snack('Incorrect OTP, please try again', error: true);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _verifyingMobileOtp = false);
-      _snack('Verification failed: ${e.toString()}', error: true);
-    }
-  }
-
-  void _startMobileCooldown() {
-    _mobileCooldownTimer?.cancel();
-    setState(() => _mobileResendCooldown = 30);
-    _mobileCooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      if (_mobileResendCooldown <= 1) {
-        t.cancel();
-        setState(() => _mobileResendCooldown = 0);
-      } else {
-        setState(() => _mobileResendCooldown--);
-      }
-    });
-  }
-
-  // --- Email OTP ---
-
-  Future<void> _sendEmailOtp() async {
-    final raw = _email.text.trim();
-    if (raw.isEmpty) {
-      _snack('Enter your email first', error: true);
-      return;
-    }
-    setState(() => _sendingEmailOtp = true);
-    try {
-      await OtpService.sendOtp(identifier: raw, channel: 'email');
-      if (!mounted) return;
-      setState(() {
-        _emailOtpSent = true;
-        _sendingEmailOtp = false;
-      });
-      _startEmailCooldown();
-      _snack('OTP sent to your email');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _sendingEmailOtp = false);
-      _snack('Failed to send OTP: ${e.toString()}', error: true);
-    }
-  }
-
-  Future<void> _verifyEmailOtp() async {
-    final code = _emailOtpController.text.trim();
-    if (code.isEmpty) {
-      _snack('Enter the OTP sent to your email', error: true);
-      return;
-    }
-    setState(() => _verifyingEmailOtp = true);
-    try {
-      final ok = await OtpService.verifyOtp(
-        identifier: _email.text.trim(),
-        otp: code,
-        channel: 'email',
-      );
-      if (!mounted) return;
-      setState(() => _verifyingEmailOtp = false);
-      if (ok) {
-        setState(() {
-          _emailVerified = true;
-          _lastVerifiedEmail = _email.text.trim();
-        });
-        _emailCooldownTimer?.cancel();
-        _snack('Email verified');
-      } else {
-        _snack('Incorrect OTP, please try again', error: true);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _verifyingEmailOtp = false);
-      _snack('Verification failed: ${e.toString()}', error: true);
-    }
-  }
-
-  void _startEmailCooldown() {
-    _emailCooldownTimer?.cancel();
-    setState(() => _emailResendCooldown = 30);
-    _emailCooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      if (_emailResendCooldown <= 1) {
-        t.cancel();
-        setState(() => _emailResendCooldown = 0);
-      } else {
-        setState(() => _emailResendCooldown--);
-      }
-    });
   }
 
   Future<void> _pickStudentId() async {
@@ -373,7 +197,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         yearOfStudy: int.tryParse(_year ?? '1') ?? 1,
         gender: _gender ?? '',
         state: _state ?? '',
-        // Both were already verified via OTP in Step 1.
         isMobileVerified: true,
         isEmailVerified: true,
         verificationStatus: 'Approved',
@@ -436,103 +259,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
-  // Reusable OTP send / verify block, used for both mobile and email.
-  Widget _otpVerificationBlock({
-    required String label,
-    required TextEditingController otpController,
-    required bool sent,
-    required bool verified,
-    required bool sending,
-    required bool verifying,
-    required int cooldown,
-    required VoidCallback onSend,
-    required VoidCallback onVerify,
-  }) {
-    if (verified) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 6, bottom: 4),
-        child: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green, size: 18),
-            SizedBox(width: 6),
-            Text(
-              'Verified',
-              style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600, fontSize: 13),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (!sent) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 6, bottom: 4),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              textStyle: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            onPressed: sending ? null : onSend,
-            icon: sending
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                  )
-                : const Icon(Icons.sms_outlined, size: 16),
-            label: Text(sending ? 'Sending OTP...' : 'Verify $label'),
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 6, bottom: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: TextField(
-              controller: otpController,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              decoration: const InputDecoration(
-                isDense: true,
-                counterText: '',
-                hintText: 'Enter OTP',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            height: 40,
-            child: ElevatedButton(
-              onPressed: verifying ? null : onVerify,
-              child: verifying
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Text('Verify'),
-            ),
-          ),
-          const SizedBox(width: 4),
-          TextButton(
-            onPressed: cooldown > 0 ? null : onSend,
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.primary,
-            ),
-            child: Text(cooldown > 0 ? 'Resend (${cooldown}s)' : 'Resend'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _page1() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -551,16 +277,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             keyboardType: TextInputType.phone,
             isRequired: true,
           ),
-          _otpVerificationBlock(
-            label: 'Mobile',
-            otpController: _mobileOtpController,
-            sent: _mobileOtpSent,
-            verified: _mobileVerified,
-            sending: _sendingMobileOtp,
-            verifying: _verifyingMobileOtp,
-            cooldown: _mobileResendCooldown,
-            onSend: _sendMobileOtp,
-            onVerify: _verifyMobileOtp,
+          OtpVerifyTrigger(
+            channel: OtpChannel.mobile,
+            target: _mobile.text,
+            isVerified: _mobileVerified,
+            onVerified: () => setState(() => _mobileVerified = true),
           ),
           const SizedBox(height: 12),
           CustomTextField(
@@ -569,16 +290,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             keyboardType: TextInputType.emailAddress,
             isRequired: true,
           ),
-          _otpVerificationBlock(
-            label: 'Email',
-            otpController: _emailOtpController,
-            sent: _emailOtpSent,
-            verified: _emailVerified,
-            sending: _sendingEmailOtp,
-            verifying: _verifyingEmailOtp,
-            cooldown: _emailResendCooldown,
-            onSend: _sendEmailOtp,
-            onVerify: _verifyEmailOtp,
+          OtpVerifyTrigger(
+            channel: OtpChannel.email,
+            target: _email.text,
+            isVerified: _emailVerified,
+            onVerified: () => setState(() => _emailVerified = true),
           ),
           const SizedBox(height: 20),
           DropdownButtonFormField<String>(
@@ -594,29 +310,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           const SizedBox(height: 24),
           CustomButton(
             text: 'Next: Academic Info',
-            onPressed: () {
-              if (_firstName.text.trim().isEmpty || _lastName.text.trim().isEmpty || _aadharName.text.trim().isEmpty) {
-                _snack('Please fill in First Name, Last Name and Aadhaar Name', error: true);
-                return;
-              }
-              if (_mobile.text.trim().isEmpty || _email.text.trim().isEmpty) {
-                _snack('Please fill in Mobile and Email', error: true);
-                return;
-              }
-              if (!_mobileVerified) {
-                _snack('Please verify your mobile number', error: true);
-                return;
-              }
-              if (!_emailVerified) {
-                _snack('Please verify your email', error: true);
-                return;
-              }
-              if (_college == null) {
-                _snack('Please select College', error: true);
-                return;
-              }
-              _goToPage(1);
-            },
+            onPressed: (_mobileVerified && _emailVerified)
+                ? () {
+                    if (_firstName.text.trim().isEmpty || _lastName.text.trim().isEmpty || _aadharName.text.trim().isEmpty) {
+                      _snack('Please fill in First Name, Last Name and Aadhaar Name', error: true);
+                      return;
+                    }
+                    if (_college == null) {
+                      _snack('Please select College', error: true);
+                      return;
+                    }
+                    _goToPage(1);
+                  }
+                : null,
           ),
         ],
       ),
