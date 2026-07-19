@@ -146,17 +146,8 @@ export async function login(req, res, next) {
     const valid = await bcrypt.compare(password, student.passwordHash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-    if (!student.mobile) {
-      return res.status(400).json({ error: 'No mobile number on file for OTP verification' });
-    }
-
-    await createOtp(student.mobile, 'SMS', 'login');
-
-    res.json({
-      requiresOtp: true,
-      studentId: student.id,
-      maskedMobile: maskMobile(student.mobile),
-    });
+    const token = signToken({ sub: student.id, role: student.role });
+    res.json({ token, student: studentResponse(student) });
   } catch (err) {
     next(err);
   }
