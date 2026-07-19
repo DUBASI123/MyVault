@@ -97,11 +97,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         });
       } else if (result is LoginSuccess) {
         context.go(AppRoutes.home);
+      } else {
+        _snack('Unexpected login result. Please try again.', error: true);
       }
     } catch (e) {
       if (mounted) {
         final msg = e.toString().replaceFirst('Exception: ', '');
-        _snack(msg, error: true);
+        _snack('Error: $msg', error: true);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
