@@ -114,14 +114,22 @@ class AuthRepository {
     required String password,
   }) async {
     try {
+      final url = Uri.parse('$_backendBaseUrl/auth/login');
+      final body = jsonEncode({
+        'identifier': identifier,
+        'password': password,
+      });
+      print('🚀 [API REQ] URL: $url');
+      print('🚀 [API REQ] BODY: $body');
+
       final response = await http.post(
-        Uri.parse('$_backendBaseUrl/auth/login'),
+        url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'identifier': identifier,
-          'password': password,
-        }),
+        body: body,
       );
+
+      print('🚀 [API RES] STATUS: ${response.statusCode}');
+      print('🚀 [API RES] BODY: ${response.body}');
 
       final data = jsonDecode(response.body);
       if (response.statusCode != 200) {
@@ -141,6 +149,7 @@ class AuthRepository {
 
       throw Exception('Unexpected response from server');
     } catch (e) {
+      print('🚀 [API ERR]: $e');
       throw Exception(e.toString().replaceFirst('Exception: ', ''));
     }
   }
