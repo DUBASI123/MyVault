@@ -19,17 +19,17 @@ if (process.env.DATABASE_URL) {
   }
 }
 
-try {
-  console.log('\nRunning: npx prisma db push...');
-  const pushOut = execSync('npx prisma db push --accept-data-loss', { encoding: 'utf8' });
-  console.log(pushOut);
-} catch (err) {
-  console.error('\n❌ ERROR RUNNING PRISMA DB PUSH:');
-  console.error('Status Code:', err.status);
-  console.error('Stdout:', err.stdout);
-  console.error('Stderr:', err.stderr);
-  process.exit(1);
-}
+// try {
+//   console.log('\nRunning: npx prisma db push...');
+//   const pushOut = execSync('npx prisma db push --accept-data-loss', { encoding: 'utf8' });
+//   console.log(pushOut);
+// } catch (err) {
+//   console.error('\n❌ ERROR RUNNING PRISMA DB PUSH:');
+//   console.error('Status Code:', err.status);
+//   console.error('Stdout:', err.stdout);
+//   console.error('Stderr:', err.stderr);
+//   process.exit(1);
+// }
 
 try {
   console.log('\nRunning: npm run db:seed...');
