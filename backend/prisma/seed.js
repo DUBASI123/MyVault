@@ -1,7 +1,18 @@
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 
-const prisma = new PrismaClient();
+// Use pgbouncer=true to disable Prisma prepared statements.
+// Required when connecting via Supabase PgBouncer (transaction mode, port 6543).
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL?.includes('pgbouncer=true')
+        ? process.env.DATABASE_URL
+        : `${process.env.DATABASE_URL}${process.env.DATABASE_URL?.includes('?') ? '&' : '?'}pgbouncer=true`,
+    },
+  },
+});
+
 
 async function main() {
   console.log('Seeding My Vault database...');
