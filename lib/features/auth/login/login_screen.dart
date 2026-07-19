@@ -30,6 +30,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   String _captchaText = '';
   _Step _step = _Step.credentials;
   String? _studentId;
+  String? _mobile;
   String? _maskedMobile;
 
   late AnimationController _animController;
@@ -90,6 +91,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (result is LoginOtpRequired) {
         setState(() {
           _studentId = result.studentId;
+          _mobile = result.mobile;
           _maskedMobile = result.maskedMobile;
           _step = _Step.otp;
         });
@@ -115,6 +117,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     try {
       await ref.read(authRepositoryProvider).verifyLoginOtp(
             studentId: _studentId!,
+            mobile: _mobile!,
             otp: _otpController.text.trim(),
           );
       if (mounted) context.go(AppRoutes.home);
@@ -129,9 +132,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Future<void> _resendOtp() async {
-    if (_studentId == null) return;
+    if (_mobile == null) return;
     try {
-      await ref.read(authRepositoryProvider).resendLoginOtp(studentId: _studentId!);
+      await ref.read(authRepositoryProvider).resendLoginOtp(mobile: _mobile!);
       _snack('OTP resent to $_maskedMobile');
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');

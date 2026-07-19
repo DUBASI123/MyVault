@@ -1,41 +1,52 @@
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
 import prisma from '../lib/prisma.js';
 import { normalizePhone } from '../lib/phone.js';
 import { signToken } from '../middleware/auth.middleware.js';
 import { broadcastToUser } from '../services/socket_service.js';
 import { uploadBuffer } from '../services/cloudinary.service.js';
 import { linkAndConfirmPhone } from '../services/supabaseAdmin.service.js';
-import { sendLiveOtpSms } from '../services/otp_delivery.service.js';
 
 // ─────────────────────────────────────────────────────────────────────────
-// OTP (sendOtp / verifyOtp / resetPassword) has been REMOVED from this
-// controller. It now lives entirely in Supabase Auth on the Flutter side
-// (see auth_repository.dart). This removes:
-//   - the otpToken table as a source of truth
-//   - the custom sendLiveOtpSms / sendLiveOtpEmail delivery service
-//     (the thing that was throwing the 500 on Forgot Password)
-// Supabase's own SMS provider (configured once in the Supabase dashboard
-// under Authentication → Providers → Phone) now handles delivery, retries,
-// and rate limiting for OTPs.
+// Login OTP now uses the SAME delivery path as registration: Supabase Auth's
+// built-in phone OTP (Authentication → Providers → Phone in the Supabase
+// dashboard), instead of the old custom sendLiveOtpSms/Twilio path.
 //
-// If you still need server-side awareness of a password change (e.g. to
-// invalidate old JWTs issued by THIS backend), add a Supabase webhook or
-// have the Flutter client call a small POST /auth/sync endpoint after a
-// successful Supabase password reset.
+// New flow:
+//   1. POST /auth/login          — validates identifier+password only.
+//                                   Returns requiresOtp + the student's full
+//                                   mobile (E.164) so the Flutter client can
+//                                   call Supabase's signInWithOtp directly.
+//   2. Flutter calls Supabase signInWithOtp(phone) — Supabase sends the SMS.
+//   3. Flutter calls Supabase verifyOTP(phone, token) — Supabase confirms it
+//      and returns a session/access token.
+//   4. POST /auth/login/confirm-otp — Flutter sends { studentId, accessToken }.
+//      This backend verifies that access token against Supabase (via the
+//      admin client below) and confirms the verified phone matches the
+//      student's mobile on file, THEN issues this app's own JWT.
+//
+// The old otpCode/otpExpiresAt columns and the custom SMS delivery service
+// are no longer used by login. They can be dropped in a future migration
+// once you confirm nothing else reads them.
 // ─────────────────────────────────────────────────────────────────────────
+
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+);
 
 function studentResponse(student) {
   const { passwordHash, otpCode, otpExpiresAt, ...safe } = student;
   return safe;
 }
 
-function generateOtp() {
-  return String(crypto.randomInt(100000, 999999));
-}
-
 function maskMobile(mobile) {
   return mobile.replace(/(\d{2})\d+(\d{2})$/, '$1******$2');
+}
+
+/** Digits-only comparison so "+919876543210" and "919876543210" both match. */
+function digitsOnly(v) {
+  return (v || '').replace(/\D/g, '');
 }
 
 export async function register(req, res, next) {
@@ -134,26 +145,16 @@ export async function login(req, res, next) {
     const valid = await bcrypt.compare(password, student.passwordHash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-
-
-    const otp = generateOtp();
-    await prisma.student.update({
-      where: { id: student.id },
-      data: {
-        otpCode: otp,
-        otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-      },
-    });
-
-    try {
-      await sendLiveOtpSms(student.mobile, otp);
-    } catch (smsErr) {
-      console.error('Failed to send login OTP SMS:', smsErr);
+    if (!student.mobile) {
+      return res.status(400).json({ error: 'No mobile number on file for OTP verification' });
     }
 
+    // No SMS sent from here anymore — the Flutter client triggers Supabase's
+    // own OTP send immediately after receiving this response.
     res.json({
       requiresOtp: true,
       studentId: student.id,
+      mobile: student.mobile,               // full E.164 number, needed by the client to call Supabase
       maskedMobile: maskMobile(student.mobile),
     });
   } catch (err) {
@@ -161,67 +162,34 @@ export async function login(req, res, next) {
   }
 }
 
-export async function verifyLoginOtp(req, res, next) {
+export async function confirmLoginOtp(req, res, next) {
   try {
-    const { studentId, otp } = req.body;
-    if (!studentId || !otp) {
-      return res.status(400).json({ error: 'studentId and otp are required' });
+    const { studentId, accessToken } = req.body;
+    if (!studentId || !accessToken) {
+      return res.status(400).json({ error: 'studentId and accessToken are required' });
     }
 
     const student = await prisma.student.findUnique({
       where: { id: studentId },
       include: { university: true, college: true },
     });
-
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
-    if (!student.otpCode || student.otpCode !== otp) {
-      return res.status(400).json({ error: 'Incorrect OTP' });
+    // Ask Supabase who this access token actually belongs to — this is the
+    // server-side proof that the OTP was genuinely verified by Supabase,
+    // not just claimed by the client.
+    const { data, error } = await supabaseAdmin.auth.getUser(accessToken);
+    if (error || !data?.user) {
+      return res.status(401).json({ error: 'Could not confirm OTP verification. Please try again.' });
     }
 
-    if (!student.otpExpiresAt || student.otpExpiresAt < new Date()) {
-      return res.status(400).json({ error: 'OTP has expired' });
+    const verifiedPhone = data.user.phone || '';
+    if (!verifiedPhone || digitsOnly(verifiedPhone) !== digitsOnly(student.mobile)) {
+      return res.status(401).json({ error: 'Verified number does not match this account.' });
     }
-
-    // Clear OTP code on success
-    await prisma.student.update({
-      where: { id: student.id },
-      data: { otpCode: null, otpExpiresAt: null },
-    });
 
     const token = signToken({ sub: student.id, role: student.role });
     res.json({ token, student: studentResponse(student) });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function resendLoginOtp(req, res, next) {
-  try {
-    const { studentId } = req.body;
-    if (!studentId) return res.status(400).json({ error: 'studentId required' });
-
-    const student = await prisma.student.findUnique({
-      where: { id: studentId },
-    });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
-
-    const otp = generateOtp();
-    await prisma.student.update({
-      where: { id: student.id },
-      data: {
-        otpCode: otp,
-        otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-      },
-    });
-
-    try {
-      await sendLiveOtpSms(student.mobile, otp);
-    } catch (smsErr) {
-      console.error('Failed to resend login OTP SMS:', smsErr);
-    }
-
-    res.json({ message: 'OTP sent successfully' });
   } catch (err) {
     next(err);
   }
