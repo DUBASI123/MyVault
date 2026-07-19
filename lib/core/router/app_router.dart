@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../storage/app_storage.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/auth/login/login_screen.dart';
 import '../../features/auth/register/register_screen.dart';
@@ -61,8 +62,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
     redirect: (context, state) async {
-      final session = Supabase.instance.client.auth.currentSession;
-      final isLoggedIn = session != null;
+      final token = await AppStorage.instance.getToken();
+      final isLoggedIn = token != null;
       final location = state.matchedLocation;
 
       final isAuthRoute = location == AppRoutes.login ||
@@ -71,40 +72,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           location == AppRoutes.splash;
 
       // Not logged in → force to login for protected routes
-      if (!isLoggedIn && !isAuthRoute) return AppRoutes.login;
+      if (!isLoggedIn && !isAuthRoute) {
+        return AppRoutes.login;
+      }
 
-      // Logged in but on auth page → check if student is actually approved
-      if (isLoggedIn && (location == AppRoutes.login || location == AppRoutes.register)) {
-        // Check verification status from database before allowing home
-        try {
-          final userId = session.user.id;
-          final row = await Supabase.instance.client
-              .from('students')
-              .select('is_verified, verification_status')
-              .eq('id', userId)
-              .maybeSingle();
-
-          if (row == null) {
-            // No student profile found — sign out and stay on login
-            await Supabase.instance.client.auth.signOut();
-            return AppRoutes.login;
-          }
-
-          final isVerified = row['is_verified'] as bool? ?? false;
-          final status = (row['verification_status'] as String? ?? '').toLowerCase();
-
-          if (!isVerified || status != 'approved') {
-            // Still pending/rejected — sign out and stay on login
-            await Supabase.instance.client.auth.signOut();
-            return AppRoutes.login;
-          }
-
-          // Fully approved — allow into dashboard
-          return AppRoutes.home;
-        } catch (_) {
-          await Supabase.instance.client.auth.signOut();
-          return AppRoutes.login;
-        }
+      // Logged in but on auth/splash pages → go to home dashboard directly
+      if (isLoggedIn && (location == AppRoutes.login || location == AppRoutes.register || location == AppRoutes.splash)) {
+        return AppRoutes.home;
       }
 
       return null;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -26,6 +27,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _otpController = TextEditingController();
 
   bool _isLoading = false;
+  String _loadingStatus = '';
+  Timer? _statusTimer1;
+  Timer? _statusTimer2;
   bool _obscurePassword = true;
   String _captchaText = '';
   _Step _step = _Step.credentials;
@@ -61,6 +65,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   @override
   void dispose() {
+    _statusTimer1?.cancel();
+    _statusTimer2?.cancel();
     _animController.dispose();
     _identifierController.dispose();
     _passwordController.dispose();
@@ -79,7 +85,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       return;
     }
 
-    setState(() => _isLoading = true);
+    _statusTimer1?.cancel();
+    _statusTimer2?.cancel();
+
+    setState(() {
+      _isLoading = true;
+      _loadingStatus = 'Authenticating...';
+    });
+
+    _statusTimer1 = Timer(const Duration(seconds: 2), () {
+      if (mounted && _isLoading) {
+        setState(() {
+          _loadingStatus = 'Server is waking up. Please wait (Render cold-start)...';
+        });
+      }
+    });
+
+    _statusTimer2 = Timer(const Duration(seconds: 12), () {
+      if (mounted && _isLoading) {
+        setState(() {
+          _loadingStatus = 'Establishing secure database connection...';
+        });
+      }
+    });
+
     try {
       final result = await ref.read(authRepositoryProvider).login(
             identifier: _identifierController.text.trim(),
@@ -106,6 +135,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         _snack('Error: $msg', error: true);
       }
     } finally {
+      _statusTimer1?.cancel();
+      _statusTimer2?.cancel();
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -424,6 +455,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               isLoading: _isLoading,
               icon: Icons.login_rounded,
             ),
+            if (_isLoading) ...[
+              const SizedBox(height: 12),
+              Center(
+                child: Text(
+                  _loadingStatus,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
