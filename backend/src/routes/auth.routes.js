@@ -4,7 +4,8 @@ import {
   getMe,
   login,
   register,
-  confirmLoginOtp,
+  verifyLoginOtp,
+  resendLoginOtp,
   getPendingStudents,
   approveStudent,
   rejectStudent,
@@ -46,7 +47,8 @@ router.post(
   login,
 );
 
-router.post('/login/confirm-otp', confirmLoginOtp);
+router.post('/login/verify-otp', verifyLoginOtp);
+router.post('/login/resend-otp', resendLoginOtp);
 
 router.get('/me', authMiddleware, getMe);
 

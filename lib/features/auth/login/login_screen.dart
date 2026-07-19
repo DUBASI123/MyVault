@@ -117,7 +117,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     try {
       await ref.read(authRepositoryProvider).verifyLoginOtp(
             studentId: _studentId!,
-            mobile: _mobile!,
             otp: _otpController.text.trim(),
           );
       if (mounted) context.go(AppRoutes.home);
@@ -132,9 +131,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Future<void> _resendOtp() async {
-    if (_mobile == null) return;
+    if (_studentId == null) return;
     try {
-      await ref.read(authRepositoryProvider).resendLoginOtp(mobile: _mobile!);
+      await ref.read(authRepositoryProvider).resendLoginOtp(studentId: _studentId!);
       _snack('OTP resent to $_maskedMobile');
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');

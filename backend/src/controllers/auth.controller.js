@@ -6,6 +6,7 @@ import { signToken } from '../middleware/auth.middleware.js';
 import { broadcastToUser } from '../services/socket_service.js';
 import { uploadBuffer } from '../services/cloudinary.service.js';
 import { linkAndConfirmPhone } from '../services/supabaseAdmin.service.js';
+import { createOtp, verifyOtp } from '../utils/otp.js';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Login OTP now uses the SAME delivery path as registration: Supabase Auth's
@@ -149,12 +150,11 @@ export async function login(req, res, next) {
       return res.status(400).json({ error: 'No mobile number on file for OTP verification' });
     }
 
-    // No SMS sent from here anymore — the Flutter client triggers Supabase's
-    // own OTP send immediately after receiving this response.
+    await createOtp(student.mobile, 'SMS', 'login');
+
     res.json({
       requiresOtp: true,
       studentId: student.id,
-      mobile: student.mobile,               // full E.164 number, needed by the client to call Supabase
       maskedMobile: maskMobile(student.mobile),
     });
   } catch (err) {
@@ -162,11 +162,11 @@ export async function login(req, res, next) {
   }
 }
 
-export async function confirmLoginOtp(req, res, next) {
+export async function verifyLoginOtp(req, res, next) {
   try {
-    const { studentId, accessToken } = req.body;
-    if (!studentId || !accessToken) {
-      return res.status(400).json({ error: 'studentId and accessToken are required' });
+    const { studentId, otp } = req.body;
+    if (!studentId || !otp) {
+      return res.status(400).json({ error: 'studentId and otp are required' });
     }
 
     const student = await prisma.student.findUnique({
@@ -175,25 +175,33 @@ export async function confirmLoginOtp(req, res, next) {
     });
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
-    // Ask Supabase who this access token actually belongs to — this is the
-    // server-side proof that the OTP was genuinely verified by Supabase,
-    // not just claimed by the client.
-    const { data, error } = await supabaseAdmin.auth.getUser(accessToken);
-    if (error || !data?.user) {
-      return res.status(401).json({ error: 'Could not confirm OTP verification. Please try again.' });
-    }
-
-    const verifiedPhone = data.user.phone || '';
-    if (!verifiedPhone || digitsOnly(verifiedPhone) !== digitsOnly(student.mobile)) {
-      return res.status(401).json({ error: 'Verified number does not match this account.' });
-    }
+    await verifyOtp(student.mobile, 'login', otp);
 
     const token = signToken({ sub: student.id, role: student.role });
     res.json({ token, student: studentResponse(student) });
   } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+}
+
+export async function resendLoginOtp(req, res, next) {
+  try {
+    const { studentId } = req.body;
+    if (!studentId) return res.status(400).json({ error: 'studentId is required' });
+
+    const student = await prisma.student.findUnique({
+      where: { id: studentId }
+    });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    await createOtp(student.mobile, 'SMS', 'login');
+    res.json({ message: 'OTP resent successfully' });
+  } catch (err) {
     next(err);
   }
 }
+
+
 
 export async function getMe(req, res, next) {
   try {

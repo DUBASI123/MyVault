@@ -129,17 +129,9 @@ class AuthRepository {
       }
 
       if (data['requiresOtp'] == true) {
-        final mobile = data['mobile'] as String;
-
-        // Trigger the actual OTP SMS via Supabase (same as registration).
-        await _db.auth.signInWithOtp(
-          phone: normalizePhoneE164(mobile),
-          shouldCreateUser: false,
-        );
-
         return LoginOtpRequired(
           studentId: data['studentId'] as String,
-          mobile: mobile,
+          mobile: '',
           maskedMobile: data['maskedMobile'] as String,
         );
       } else if (data['token'] != null) {
@@ -148,43 +140,22 @@ class AuthRepository {
       }
 
       throw Exception('Unexpected response from server');
-    } on AuthException catch (e) {
-      final msg = e.message.toLowerCase();
-      if (msg.contains('rate limit') || msg.contains('too many')) {
-        throw Exception('Too many OTP requests. Please wait a minute and try again.');
-      }
-      throw Exception('Failed to send OTP: ${e.message}');
     } catch (e) {
       throw Exception(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
-  // Step 2: verify the OTP with Supabase directly, then hand the resulting
-  // Supabase access token to our backend so it can issue this app's own JWT
-  // after confirming server-side that the verified phone matches the account.
   Future<void> verifyLoginOtp({
     required String studentId,
-    required String mobile,
     required String otp,
   }) async {
     try {
-      final result = await _db.auth.verifyOTP(
-        phone: normalizePhoneE164(mobile),
-        token: otp,
-        type: OtpType.sms,
-      );
-
-      final accessToken = result.session?.accessToken;
-      if (accessToken == null) {
-        throw Exception('OTP verification did not return a session. Please try again.');
-      }
-
       final response = await http.post(
-        Uri.parse('$_backendBaseUrl/auth/login/confirm-otp'),
+        Uri.parse('$_backendBaseUrl/auth/login/verify-otp'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'studentId': studentId,
-          'accessToken': accessToken,
+          'otp': otp,
         }),
       );
 
@@ -194,37 +165,23 @@ class AuthRepository {
       }
 
       await _persistSession(data);
-
-      // The Supabase session was only needed to prove OTP verification to
-      // our backend — sign it back out so it doesn't linger as an active
-      // Supabase session alongside our own app session/token.
-      await _db.auth.signOut();
-    } on AuthException catch (e) {
-      final msg = e.message.toLowerCase();
-      if (msg.contains('expired')) {
-        throw Exception('OTP has expired. Please request a new one.');
-      }
-      if (msg.contains('invalid') || msg.contains('token')) {
-        throw Exception('Incorrect OTP. Please try again.');
-      }
-      throw Exception('OTP verification failed: ${e.message}');
     } catch (e) {
       throw Exception(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
-  Future<void> resendLoginOtp({required String mobile}) async {
+  Future<void> resendLoginOtp({required String studentId}) async {
     try {
-      await _db.auth.signInWithOtp(
-        phone: normalizePhoneE164(mobile),
-        shouldCreateUser: false,
+      final response = await http.post(
+        Uri.parse('$_backendBaseUrl/auth/login/resend-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'studentId': studentId}),
       );
-    } on AuthException catch (e) {
-      final msg = e.message.toLowerCase();
-      if (msg.contains('rate limit') || msg.contains('too many')) {
-        throw Exception('Too many OTP requests. Please wait a minute and try again.');
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200) {
+        throw Exception(data['error'] ?? 'Resend failed');
       }
-      throw Exception('Failed to resend OTP: ${e.message}');
     } catch (e) {
       throw Exception(e.toString().replaceFirst('Exception: ', ''));
     }

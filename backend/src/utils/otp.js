@@ -10,7 +10,7 @@ export function generateOtp() {
 export async function createOtp(identifier, channel, purpose) {
   const otp = generateOtp();
   const otpHash = await bcrypt.hash(otp, 10);
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
 
   await prisma.otpVerification.create({
     data: { identifier, channel, otpHash, purpose, expiresAt }
