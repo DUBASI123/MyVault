@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide OtpChannel;
 
-enum OtpChannel { mobile, email }
-
 class _Palette {
   static const bg = Color(0xFF0A0A0F);
   static const surface = Color(0xFF1A1A2E);
@@ -13,40 +11,32 @@ class _Palette {
   static const success = Color(0xFF3ECF8E);
 }
 
-/// Small text-link trigger matching your existing "Verify Email" style.
-/// Tapping it opens the OTP entry sheet as a modal bottom sheet — keeps
-/// your form layout untouched (no permanent gap reserved in the column).
+/// Small text-link trigger. Tapping it opens the OTP entry sheet as a
+/// modal bottom sheet — keeps your form layout untouched.
 class OtpVerifyTrigger extends StatelessWidget {
-  final OtpChannel channel;
-  final String target;
+  final String target; // mobile number
   final bool isVerified;
   final VoidCallback onVerified;
 
   const OtpVerifyTrigger({
     super.key,
-    required this.channel,
     required this.target,
     required this.isVerified,
     required this.onVerified,
   });
 
-  String get _label =>
-      channel == OtpChannel.mobile ? 'Verify Mobile' : 'Verify Email';
-
   @override
   Widget build(BuildContext context) {
     if (isVerified) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 12),
+      return const Padding(
+        padding: EdgeInsets.only(top: 4, bottom: 12),
         child: Row(
           children: [
-            const Icon(Icons.check_circle, color: _Palette.success, size: 16),
-            const SizedBox(width: 6),
+            Icon(Icons.check_circle, color: _Palette.success, size: 16),
+            SizedBox(width: 6),
             Text(
-              channel == OtpChannel.mobile
-                  ? 'Mobile verified'
-                  : 'Email verified',
-              style: const TextStyle(
+              'Mobile verified',
+              style: TextStyle(
                 color: _Palette.success,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
@@ -67,7 +57,7 @@ class OtpVerifyTrigger extends StatelessWidget {
                   context: context,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
-                  builder: (_) => _OtpSheet(channel: channel, target: target),
+                  builder: (_) => _OtpSheet(target: target),
                 );
                 if (verified == true) onVerified();
               },
@@ -81,7 +71,7 @@ class OtpVerifyTrigger extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              _label,
+              'Verify Mobile',
               style: TextStyle(
                 color:
                     target.trim().isEmpty ? Colors.white24 : _Palette.accent,
@@ -97,10 +87,9 @@ class OtpVerifyTrigger extends StatelessWidget {
 }
 
 class _OtpSheet extends StatefulWidget {
-  final OtpChannel channel;
   final String target;
 
-  const _OtpSheet({required this.channel, required this.target});
+  const _OtpSheet({required this.target});
 
   @override
   State<_OtpSheet> createState() => _OtpSheetState();
@@ -113,19 +102,14 @@ class _OtpSheetState extends State<_OtpSheet> {
   late final List<TextEditingController> _controllers;
   late final List<FocusNode> _focusNodes;
 
-  bool _otpSent = false;
   bool _sending = false;
   bool _verifying = false;
   String? _errorText;
   int _cooldown = 0;
   Timer? _timer;
 
-  String get _channelLabel =>
-      widget.channel == OtpChannel.mobile ? 'mobile number' : 'email';
-
   /// Normalizes mobile numbers to E.164 (+91...) for Supabase phone auth.
   String get _normalizedTarget {
-    if (widget.channel == OtpChannel.email) return widget.target.trim();
     final digits = widget.target.trim().replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.length == 10) return '+91$digits';
     if (digits.startsWith('91') && digits.length == 12) return '+$digits';
@@ -170,25 +154,12 @@ class _OtpSheetState extends State<_OtpSheet> {
       _errorText = null;
     });
     try {
-      if (widget.channel == OtpChannel.email) {
-        // shouldCreateUser: true → works whether the email already exists
-        // in auth.users or not. This is the fix for the 422
-        // user_already_exists error you were hitting with signUp().
-        await _supabase.auth.signInWithOtp(
-          email: _normalizedTarget,
-          shouldCreateUser: true,
-        );
-      } else {
-        await _supabase.auth.signInWithOtp(
-          phone: _normalizedTarget,
-          shouldCreateUser: true,
-        );
-      }
+      await _supabase.auth.signInWithOtp(
+        phone: _normalizedTarget,
+        shouldCreateUser: true,
+      );
       if (!mounted) return;
-      setState(() {
-        _sending = false;
-        _otpSent = true;
-      });
+      setState(() => _sending = false);
       _startCooldown();
       FocusScope.of(context).requestFocus(_focusNodes.first);
     } on AuthException catch (e) {
@@ -218,12 +189,9 @@ class _OtpSheetState extends State<_OtpSheet> {
     });
     try {
       final res = await _supabase.auth.verifyOTP(
-        type: widget.channel == OtpChannel.email
-            ? OtpType.email
-            : OtpType.sms,
+        type: OtpType.sms,
         token: code,
-        email: widget.channel == OtpChannel.email ? _normalizedTarget : null,
-        phone: widget.channel == OtpChannel.mobile ? _normalizedTarget : null,
+        phone: _normalizedTarget,
       );
       if (!mounted) return;
       if (res.session != null) {
@@ -254,7 +222,7 @@ class _OtpSheetState extends State<_OtpSheet> {
 
   String _friendlyAuthError(AuthException e) {
     if (e.statusCode == '422' || e.message.contains('user_already_exists')) {
-      return 'This $_channelLabel is already registered with a verified '
+      return 'This mobile number is already registered with a verified '
           'account. Try logging in instead.';
     }
     if (e.message.toLowerCase().contains('expired')) {
@@ -312,9 +280,9 @@ class _OtpSheetState extends State<_OtpSheet> {
               ),
             ),
             const SizedBox(height: 18),
-            Text(
-              'Verify your $_channelLabel',
-              style: const TextStyle(
+            const Text(
+              'Verify your mobile number',
+              style: TextStyle(
                 color: Colors.white,
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
@@ -326,7 +294,7 @@ class _OtpSheetState extends State<_OtpSheet> {
               style: const TextStyle(color: Colors.white54, fontSize: 13),
             ),
             const SizedBox(height: 20),
-            if (_sending && !_otpSent)
+            if (_sending)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),

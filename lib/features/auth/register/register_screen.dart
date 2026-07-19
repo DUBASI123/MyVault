@@ -14,7 +14,7 @@ import '../../../core/services/otp_service.dart';
 import '../../../shared/models/student_model.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide OtpChannel;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/auth_repository.dart';
 import 'otp_verification_block.dart';
 
@@ -41,7 +41,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   // --- OTP verification state ---
   bool _mobileVerified = false;
-  bool _emailVerified = false;
 
   String? _university;
   String? _college;
@@ -63,7 +62,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.initState();
     _loadColleges();
     _mobile.addListener(_onMobileChanged);
-    _email.addListener(_onEmailChanged);
   }
 
   Future<void> _loadColleges() async {
@@ -89,20 +87,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
   }
 
-  // If the user edits the mobile/email after verifying it, invalidate the
-  // previous verification so they can't sneak an unverified value through.
   void _onMobileChanged() {
     if (_mobileVerified) {
       setState(() {
         _mobileVerified = false;
-      });
-    }
-  }
-
-  void _onEmailChanged() {
-    if (_emailVerified) {
-      setState(() {
-        _emailVerified = false;
       });
     }
   }
@@ -114,7 +102,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _lastName.dispose();
     _aadharName.dispose();
     _mobile.removeListener(_onMobileChanged);
-    _email.removeListener(_onEmailChanged);
     _mobile.dispose();
     _email.dispose();
     _hallTicket.dispose();
@@ -168,8 +155,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _snack('Please upload your Profile Photo', error: true);
       return;
     }
-    if (!_mobileVerified || !_emailVerified) {
-      _snack('Please verify your mobile and email before submitting', error: true);
+    if (!_mobileVerified) {
+      _snack('Please verify your mobile number before submitting', error: true);
       return;
     }
 
@@ -278,7 +265,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             isRequired: true,
           ),
           OtpVerifyTrigger(
-            channel: OtpChannel.mobile,
             target: _mobile.text,
             isVerified: _mobileVerified,
             onVerified: () => setState(() => _mobileVerified = true),
@@ -289,12 +275,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             controller: _email,
             keyboardType: TextInputType.emailAddress,
             isRequired: true,
-          ),
-          OtpVerifyTrigger(
-            channel: OtpChannel.email,
-            target: _email.text,
-            isVerified: _emailVerified,
-            onVerified: () => setState(() => _emailVerified = true),
           ),
           const SizedBox(height: 20),
           DropdownButtonFormField<String>(
@@ -310,7 +290,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           const SizedBox(height: 24),
           CustomButton(
             text: 'Next: Academic Info',
-            onPressed: (_mobileVerified && _emailVerified)
+            onPressed: _mobileVerified
                 ? () {
                     if (_firstName.text.trim().isEmpty || _lastName.text.trim().isEmpty || _aadharName.text.trim().isEmpty) {
                       _snack('Please fill in First Name, Last Name and Aadhaar Name', error: true);
