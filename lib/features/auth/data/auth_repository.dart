@@ -11,28 +11,7 @@ import '../../../shared/models/student_model.dart';
 // Point this at the Render production API URL
 const String _backendBaseUrl = 'https://myvault-jbd7.onrender.com/api';
 
-// ─── Verification Exception ──────────────────────────────────────────────────
-class PendingVerificationException implements Exception {
-  final String collegeName;
-  final String status; // 'Pending' | 'Rejected'
-  final String? rejectionReason;
 
-  PendingVerificationException({
-    required this.collegeName,
-    required this.status,
-    this.rejectionReason,
-  });
-
-  @override
-  String toString() {
-    if (status == 'Rejected') {
-      return 'Your registration was rejected by $collegeName.'
-          '${rejectionReason != null ? ' Reason: $rejectionReason' : ''}';
-    }
-    return 'Your account is pending verification by $collegeName. '
-        'You will be able to log in once approved.';
-  }
-}
 
 // ─── OTP result wrapper (kept so UI code doesn't need to change shape) ───────
 class OtpSendResult {
@@ -136,15 +115,6 @@ class AuthRepository {
       );
 
       final data = jsonDecode(response.body);
-      if (response.statusCode == 403 &&
-          data['error'] != null &&
-          data['error'].toString().toLowerCase().contains('pending approval')) {
-        throw PendingVerificationException(
-          collegeName: data['collegeName'] ?? 'your college',
-          status: 'Pending',
-        );
-      }
-
       if (response.statusCode != 200) {
         throw Exception(data['error'] ?? 'Login failed');
       }
@@ -159,7 +129,6 @@ class AuthRepository {
       await _persistSession(data);
       return LoginSuccess();
     } catch (e) {
-      if (e is PendingVerificationException) rethrow;
       throw Exception(e.toString().replaceFirst('Exception: ', ''));
     }
   }

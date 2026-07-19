@@ -89,6 +89,8 @@ export async function register(req, res, next) {
         idCardUrl: idCardUrl || null,
         isMobileVerified: true,
         isEmailVerified: true,
+        verificationStatus: 'Approved',
+        isVerified: true,
       },
       include: { university: true, college: true },
     });
@@ -132,10 +134,7 @@ export async function login(req, res, next) {
     const valid = await bcrypt.compare(password, student.passwordHash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const isApproved = student.isVerified || (student.verificationStatus && student.verificationStatus.toLowerCase() === 'approved');
-    if (!isApproved) {
-      return res.status(403).json({ error: 'Your student account is pending approval by the college administration.' });
-    }
+
 
     const otp = generateOtp();
     await prisma.student.update({

@@ -97,7 +97,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         context.go(AppRoutes.home);
       }
     } catch (e) {
-      if (mounted) _handleLoginError(e);
+      if (mounted) {
+        final msg = e.toString().replaceFirst('Exception: ', '');
+        _snack(msg, error: true);
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -131,109 +134,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       await ref.read(authRepositoryProvider).resendLoginOtp(studentId: _studentId!);
       _snack('OTP resent to $_maskedMobile');
     } catch (e) {
-      final msg = e.toString().replaceFirst('Exception: ', '');
-      _snack(msg, error: true);
-    }
-  }
-
-  void _handleLoginError(Object e) {
-    if (e is PendingVerificationException) {
-      final isRejected = e.status == 'Rejected';
-      showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (ctx) => Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
-                  blurRadius: 30,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isRejected
-                          ? [const Color(0xFFEF4444), const Color(0xFFDC2626)]
-                          : [const Color(0xFFF59E0B), const Color(0xFFD97706)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: (isRejected ? const Color(0xFFEF4444) : const Color(0xFFF59E0B))
-                            .withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    isRejected ? Icons.gpp_bad_rounded : Icons.pending_actions_rounded,
-                    color: Colors.white,
-                    size: 40,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  isRejected ? 'Registration Rejected' : 'Approval Pending',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A2E),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  isRejected
-                      ? 'Your registration request for ${e.collegeName} has been rejected by the administrator.\n\n'
-                        'Reason: ${e.rejectionReason ?? "Please contact administration."}'
-                      : 'Your registration request for ${e.collegeName} is awaiting approval from your college administrator.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isRejected ? const Color(0xFFEF4444) : const Color(0xFFF59E0B),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      elevation: 0,
-                    ),
-                    child: const Text('Okay',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    } else {
       final msg = e.toString().replaceFirst('Exception: ', '');
       _snack(msg, error: true);
     }
