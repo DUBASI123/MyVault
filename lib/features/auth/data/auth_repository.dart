@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/cloudinary_service.dart';
+import '../../../core/storage/app_storage.dart';
 import '../../../shared/models/student_model.dart';
 
 // Point this at the Render production API URL
@@ -41,6 +42,17 @@ class OtpSendResult {
   const OtpSendResult({this.verificationId, this.autoVerified = false, this.otpPreview});
 }
 
+// ─── Backend Login OTP Results ──────────────────────────────────────────────
+sealed class LoginResult {}
+
+class LoginSuccess extends LoginResult {}
+
+class LoginOtpRequired extends LoginResult {
+  final String studentId;
+  final String maskedMobile;
+  LoginOtpRequired({required this.studentId, required this.maskedMobile});
+}
+
 /// Normalizes an Indian mobile number to E.164 (+91XXXXXXXXXX) for Supabase phone auth.
 String normalizePhoneE164(String raw) {
   var digits = raw.trim().replaceAll(RegExp(r'[^0-9+]'), '');
@@ -62,23 +74,36 @@ class CurrentStudentNotifier extends StateNotifier<StudentModel?> {
   CurrentStudentNotifier() : super(null);
 
   Future<void> load() async {
-    final user = SupabaseService.currentUser;
-    if (user == null) {
+    final token = await AppStorage.instance.getToken();
+    if (token == null) {
       state = null;
       return;
     }
-    final row = await SupabaseService.client
-        .from('students')
-        .select('*, universities(name), colleges(name, logo_url)')
-        .eq('id', user.id)
-        .maybeSingle();
-    if (row != null) state = StudentModel.fromMap(row);
+    // Fetch profile from our backend
+    try {
+      final response = await http.get(
+        Uri.parse('$_backendBaseUrl/auth/me'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['student'] != null) {
+          state = StudentModel.fromMap(data['student'] as Map<String, dynamic>);
+          return;
+        }
+      }
+    } catch (_) {}
+    state = null;
   }
 
   void setStudent(StudentModel? s) => state = s;
   void clear() => state = null;
 
   Future<void> logout() async {
+    await AppStorage.instance.clearSession();
     await SupabaseService.signOut();
     state = null;
   }
@@ -96,54 +121,102 @@ class AuthRepository {
   SupabaseClient get _db => SupabaseService.client;
 
   // ── Login ──────────────────────────────────────────────────────────────────
-  Future<StudentModel> login({
+  Future<LoginResult> login({
     required String identifier,
     required String password,
   }) async {
-    String email;
-    if (identifier.contains('@')) {
-      email = identifier.trim();
-    } else {
-      final row = await _db
-          .from('students')
-          .select('email')
-          .or('hall_ticket.eq.${identifier.trim()},mobile.eq.${identifier.trim()}')
-          .maybeSingle();
-      if (row == null) throw Exception('No account found for this Hall Ticket / Mobile number.');
-      email = row['email'] as String;
-    }
-
     try {
-      final response = await SupabaseService.signInWithPassword(
-        email: email,
-        password: password,
+      final response = await http.post(
+        Uri.parse('$_backendBaseUrl/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'identifier': identifier,
+          'password': password,
+        }),
       );
-      final user = response.user;
-      if (user == null) throw Exception('Login failed — please try again.');
 
-      await _ref.read(currentStudentProvider.notifier).load();
-      final student = _ref.read(currentStudentProvider);
-      if (student == null) {
-        await SupabaseService.signOut();
-        throw Exception('Student profile not found. Please contact support.');
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 403 &&
+          data['error'] != null &&
+          data['error'].toString().toLowerCase().contains('pending approval')) {
+        throw PendingVerificationException(
+          collegeName: data['collegeName'] ?? 'your college',
+          status: 'Pending',
+        );
       }
-      return student;
-    } on AuthException catch (e) {
-      final msg = e.message.toLowerCase();
-      if (msg.contains('invalid') || msg.contains('credentials') || msg.contains('wrong')) {
-        throw Exception('Incorrect email or password. Please try again.');
-      } else if (msg.contains('email not confirmed') || msg.contains('not confirmed')) {
-        throw Exception('Please verify your email first. Check your inbox for a confirmation link.');
-      } else if (msg.contains('too many')) {
-        throw Exception('Too many login attempts. Please wait a moment and try again.');
-      } else {
-        throw Exception('Login failed: ${e.message}');
+
+      if (response.statusCode != 200) {
+        throw Exception(data['error'] ?? 'Login failed');
       }
+
+      if (data['requiresOtp'] == true) {
+        return LoginOtpRequired(
+          studentId: data['studentId'] as String,
+          maskedMobile: data['maskedMobile'] as String,
+        );
+      }
+
+      await _persistSession(data);
+      return LoginSuccess();
+    } catch (e) {
+      if (e is PendingVerificationException) rethrow;
+      throw Exception(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
+  Future<void> verifyLoginOtp({
+    required String studentId,
+    required String otp,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_backendBaseUrl/auth/login/verify-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'studentId': studentId,
+          'otp': otp,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200) {
+        throw Exception(data['error'] ?? 'Verification failed');
+      }
+
+      await _persistSession(data);
+    } catch (e) {
+      throw Exception(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> resendLoginOtp({required String studentId}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_backendBaseUrl/auth/login/resend-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'studentId': studentId}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200) {
+        throw Exception(data['error'] ?? 'Failed to resend OTP');
+      }
+    } catch (e) {
+      throw Exception(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _persistSession(Map<String, dynamic> data) async {
+    final token = data['token'] as String;
+    await AppStorage.instance.saveToken(token);
+    final studentData = data['student'] as Map<String, dynamic>;
+    final student = StudentModel.fromMap(studentData);
+    _ref.read(currentStudentProvider.notifier).setStudent(student);
+    await AppStorage.instance.saveStudent(student);
+  }
+
   // ── Register ───────────────────────────────────────────────────────────────
-  Future<AuthResponse> register(
+  Future<void> register(
     StudentModel student,
     String password, {
     required String idCardPath,
@@ -159,53 +232,44 @@ class AuthRepository {
       await _db.auth.updateUser(UserAttributes(password: password));
 
       final user = _db.auth.currentUser;
-      if (user == null) throw Exception('Session expired. Please verify email and mobile again.');
+      if (user == null) throw Exception('Session expired. Please verify mobile again.');
 
-      await _db.from('students').insert({
-        'id': user.id,
-        'first_name': student.firstName,
-        'last_name': student.lastName,
-        'full_name_aadhar': student.fullNameAadhar,
-        'mobile': student.mobile,
-        'email': student.email,
-        'hall_ticket': student.hallTicket,
-        'university_id': student.universityId,
-        'college_id': student.collegeId,
-        'course': student.course,
-        'branch': student.branch,
-        'semester': student.semester,
-        'year_of_study': student.yearOfStudy,
-        'passing_year': student.passingYear,
-        'gender': student.gender,
-        'state': student.state,
-        'is_mobile_verified': true,
-        'is_email_verified': true,
-        'profile_pic_url': profilePicUrl,
-        'id_card_url': idCardUrl,
-        'verification_status': 'Approved',
-        'is_verified': true,
-      });
+      // Post to our Node.js backend to register the Prisma student record
+      final response = await http.post(
+        Uri.parse('$_backendBaseUrl/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id': user.id,
+          'firstName': student.firstName,
+          'lastName': student.lastName,
+          'fullNameAadhar': student.fullNameAadhar,
+          'mobile': student.mobile,
+          'email': student.email,
+          'password': password,
+          'hallTicket': student.hallTicket,
+          'universityId': student.universityId,
+          'collegeId': student.collegeId,
+          'course': student.course,
+          'branch': student.branch,
+          'semester': student.semester,
+          'yearOfStudy': student.yearOfStudy,
+          'passingYear': student.passingYear,
+          'gender': student.gender,
+          'state': student.state,
+          'profilePicUrl': profilePicUrl,
+          'idCardUrl': idCardUrl,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 201) {
+        throw Exception(data['error'] ?? 'Registration failed');
+      }
 
       await SupabaseService.signOut();
       _ref.read(currentStudentProvider.notifier).clear();
-
-      return AuthResponse(user: user);
-    } on AuthException catch (e) {
-      final msg = e.message.toLowerCase();
-      if (msg.contains('rate limit') || msg.contains('over_email_send_rate_limit') || msg.contains('security purposes')) {
-        throw Exception('Too many registration attempts. Please wait a few minutes and try again.');
-      } else if (msg.contains('already registered') || msg.contains('user_already_exists')) {
-        throw Exception(
-          'This email is already registered.\n\n'
-          '👉 Please proceed directly to the Login page to sign in with your credentials.',
-        );
-      } else {
-        throw Exception('Registration failed: ${e.message}');
-      }
-    } on PostgrestException catch (e) {
-      throw Exception(_friendlyPostgrestMessage(e));
     } catch (e) {
-      throw Exception(_friendlyGenericMessage(e));
+      throw Exception(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 

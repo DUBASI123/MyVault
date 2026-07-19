@@ -69,6 +69,8 @@ model Student {
   certificates     Certificate[]
   submissions      ProjectSubmission[]
   applications     InternshipApplication[]
+  otpCode          String?   @map("otp_code")
+  otpExpiresAt     DateTime? @map("otp_expires_at")
 
   @@map("students")
 }

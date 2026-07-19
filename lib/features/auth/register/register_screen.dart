@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -41,6 +42,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   // --- OTP verification state ---
   bool _mobileVerified = false;
+  bool _aadharManuallyEdited = false;
 
   String? _university;
   String? _college;
@@ -62,6 +64,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.initState();
     _loadColleges();
     _mobile.addListener(_onMobileChanged);
+    _firstName.addListener(_syncFullNameAadhar);
+    _lastName.addListener(_syncFullNameAadhar);
+  }
+
+  // Auto-fills fullNameAadhar from first + last name as the user types.
+  // If the student manually edits the Aadhar field afterwards, we stop overwriting.
+  void _syncFullNameAadhar() {
+    if (_aadharManuallyEdited) return;
+    final combined =
+        '${_firstName.text.trim()} ${_lastName.text.trim()}'.trim();
+    _aadharName.value = TextEditingValue(
+      text: combined,
+      selection: TextSelection.collapsed(offset: combined.length),
+    );
   }
 
   Future<void> _loadColleges() async {
@@ -98,6 +114,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   void dispose() {
     _pageController.dispose();
+    _firstName.removeListener(_syncFullNameAadhar);
+    _lastName.removeListener(_syncFullNameAadhar);
     _firstName.dispose();
     _lastName.dispose();
     _aadharName.dispose();
@@ -191,19 +209,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         createdAt: DateTime.now(),
       );
 
-      final response = await ref.read(authRepositoryProvider).register(
+      await ref.read(authRepositoryProvider).register(
         student,
         _password.text,
         idCardPath: _studentIdPath!,
         profilePicPath: _profilePhotoPath!,
       );
-
-      final user = response.user;
-      if (user == null) throw Exception('Failed to sign up user.');
-
-      await AppStorage.instance.clearSession();
-      await Supabase.instance.client.auth.signOut();
-      ref.read(currentStudentProvider.notifier).clear();
 
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -222,161 +233,283 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
+  static Widget _blob(double size, Color color) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      );
+
+  Widget _glassCard({required Widget child}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.55),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: Colors.white.withOpacity(0.6), width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF6C63FF).withOpacity(0.15),
+                blurRadius: 30,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Account'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: _currentPage > 0 ? () => _goToPage(_currentPage - 1) : () => context.pop(),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(child: Text('Step ${_currentPage + 1}/4')),
+      body: Stack(
+        children: [
+          // Gradient background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFEDEBFB), Color(0xFFF7F5FF), Color(0xFFE3E8FC)],
+              ),
+            ),
+          ),
+          Positioned(top: -80, right: -60, child: _blob(220, const Color(0xFF6C63FF).withOpacity(0.25))),
+          Positioned(bottom: -100, left: -80, child: _blob(260, const Color(0xFF4F46E5).withOpacity(0.18))),
+          Positioned(top: 300, left: -40, child: _blob(140, const Color(0xFF9F97FF).withOpacity(0.18))),
+
+          SafeArea(
+            child: Column(
+              children: [
+                // Custom App Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_rounded, color: Color(0xFF1A1A2E)),
+                        onPressed: _currentPage > 0 ? () => _goToPage(_currentPage - 1) : () => context.pop(),
+                      ),
+                      Text(
+                        'Create your vault',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Text(
+                          'Step ${_currentPage + 1}/4',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF4F46E5),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      _glassContainer(_page1()),
+                      _glassContainer(_page2()),
+                      _glassContainer(_page3()),
+                      _glassContainer(_page4()),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [_page1(), _page2(), _page3(), _page4()],
-      ),
+    );
+  }
+
+  Widget _glassContainer(Widget child) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: _glassCard(child: child),
     );
   }
 
   Widget _page1() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CustomTextField(label: 'First Name', controller: _firstName, isRequired: true),
-          const SizedBox(height: 12),
-          CustomTextField(label: 'Last Name / Surname', controller: _lastName, isRequired: true),
-          const SizedBox(height: 12),
-          CustomTextField(label: 'Full Name (Aadhaar)', controller: _aadharName, isRequired: true),
-          const SizedBox(height: 20),
-          CustomTextField(
-            label: 'Mobile',
-            controller: _mobile,
-            keyboardType: TextInputType.phone,
-            isRequired: true,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CustomTextField(label: 'First Name', controller: _firstName, isRequired: true),
+        const SizedBox(height: 16),
+        CustomTextField(label: 'Last Name / Surname', controller: _lastName, isRequired: true),
+        const SizedBox(height: 16),
+        CustomTextField(
+          label: 'Full Name (Aadhaar)',
+          controller: _aadharName,
+          isRequired: true,
+          onChanged: (_) => setState(() => _aadharManuallyEdited = true),
+        ),
+        if (_aadharManuallyEdited)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 4),
+            child: GestureDetector(
+              onTap: () {
+                setState(() => _aadharManuallyEdited = false);
+                _syncFullNameAadhar();
+              },
+              child: const Text(
+                'Reset to first + last name',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  color: Color(0xFF4F46E5),
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
           ),
-          OtpVerifyTrigger(
-            target: _mobile.text,
-            isVerified: _mobileVerified,
-            onVerified: () => setState(() => _mobileVerified = true),
+        const SizedBox(height: 16),
+        CustomTextField(
+          label: 'Mobile',
+          controller: _mobile,
+          keyboardType: TextInputType.phone,
+          isRequired: true,
+        ),
+        const SizedBox(height: 8),
+        OtpVerifyTrigger(
+          target: _mobile.text,
+          isVerified: _mobileVerified,
+          onVerified: () => setState(() => _mobileVerified = true),
+        ),
+        const SizedBox(height: 16),
+        CustomTextField(
+          label: 'Email',
+          controller: _email,
+          keyboardType: TextInputType.emailAddress,
+          isRequired: true,
+        ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<String>(
+          value: _college,
+          isExpanded: true,
+          style: const TextStyle(fontFamily: 'Poppins', color: Color(0xFF1A1A2E), fontSize: 14),
+          decoration: InputDecoration(
+            labelText: 'Select College',
+            labelStyle: const TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w500),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.6),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.7)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 1.6),
+            ),
           ),
-          const SizedBox(height: 12),
-          CustomTextField(
-            label: 'Email',
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            isRequired: true,
-          ),
-          const SizedBox(height: 20),
-          DropdownButtonFormField<String>(
-            value: _college,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Select College'),
-            items: _colleges.map((c) {
-              final label = c.district != null ? '${c.name} — ${c.district}' : c.name;
-              return DropdownMenuItem(value: c.name, child: Text(label));
-            }).toList(),
-            onChanged: _onCollegeSelected,
-          ),
-          const SizedBox(height: 24),
-          CustomButton(
-            text: 'Next: Academic Info',
-            onPressed: _mobileVerified
-                ? () {
-                    if (_firstName.text.trim().isEmpty || _lastName.text.trim().isEmpty || _aadharName.text.trim().isEmpty) {
-                      _snack('Please fill in First Name, Last Name and Aadhaar Name', error: true);
-                      return;
-                    }
-                    if (_college == null) {
-                      _snack('Please select College', error: true);
-                      return;
-                    }
-                    _goToPage(1);
+          items: _colleges.map((c) {
+            final label = c.district != null ? '${c.name} — ${c.district}' : c.name;
+            return DropdownMenuItem(value: c.name, child: Text(label));
+          }).toList(),
+          onChanged: _onCollegeSelected,
+        ),
+        const SizedBox(height: 28),
+        CustomButton(
+          text: 'Next: Academic Info',
+          onPressed: _mobileVerified
+              ? () {
+                  if (_firstName.text.trim().isEmpty || _lastName.text.trim().isEmpty || _aadharName.text.trim().isEmpty) {
+                    _snack('Please fill in First Name, Last Name and Aadhaar Name', error: true);
+                    return;
                   }
-                : null,
-          ),
-        ],
-      ),
+                  if (_college == null) {
+                    _snack('Please select College', error: true);
+                    return;
+                  }
+                  _goToPage(1);
+                }
+              : null,
+        ),
+      ],
     );
   }
 
   Widget _page2() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          _dropdown('Course', _course, ['B.Tech', 'M.Tech', 'MBA'], (v) => setState(() => _course = v)),
-          const SizedBox(height: 12),
-          CustomTextField(label: 'Hall Ticket', controller: _hallTicket, isRequired: true),
-          const SizedBox(height: 12),
-          _dropdown('Branch', _branch, ['CSE', 'ECE', 'EEE', 'MECH'], (v) => setState(() => _branch = v)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _dropdown('Year', _year, ['1', '2', '3', '4'], (v) => setState(() => _year = v))),
-              const SizedBox(width: 12),
-              Expanded(child: _dropdown('Semester', _semester, ['1', '2'], (v) => setState(() => _semester = v))),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _dropdown('Gender', _gender, ['Male', 'Female', 'Other'], (v) => setState(() => _gender = v)),
-          const SizedBox(height: 12),
-          _dropdown('State', _state, ['Telangana', 'Andhra Pradesh', 'Karnataka'], (v) => setState(() => _state = v)),
-          const SizedBox(height: 24),
-          CustomButton(
-            text: 'Next: Security & OTP',
-            onPressed: () {
-              if (_hallTicket.text.trim().isEmpty) {
-                _snack('Please fill in your Hall Ticket', error: true);
-                return;
-              }
-              if (_course == null || _branch == null || _year == null || _semester == null) {
-                _snack('Please fill in all academic details', error: true);
-                return;
-              }
-              _goToPage(2);
-            },
-          ),
-        ],
-      ),
+    return Column(
+      children: [
+        _dropdown('Course', _course, ['B.Tech', 'M.Tech', 'MBA'], (v) => setState(() => _course = v)),
+        const SizedBox(height: 16),
+        CustomTextField(label: 'Hall Ticket', controller: _hallTicket, isRequired: true),
+        const SizedBox(height: 16),
+        _dropdown('Branch', _branch, ['CSE', 'ECE', 'EEE', 'MECH'], (v) => setState(() => _branch = v)),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: _dropdown('Year', _year, ['1', '2', '3', '4'], (v) => setState(() => _year = v))),
+            const SizedBox(width: 12),
+            Expanded(child: _dropdown('Semester', _semester, ['1', '2'], (v) => setState(() => _semester = v))),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _dropdown('Gender', _gender, ['Male', 'Female', 'Other'], (v) => setState(() => _gender = v)),
+        const SizedBox(height: 16),
+        _dropdown('State', _state, ['Telangana', 'Andhra Pradesh', 'Karnataka'], (v) => setState(() => _state = v)),
+        const SizedBox(height: 28),
+        CustomButton(
+          text: 'Next: Security & OTP',
+          onPressed: () {
+            if (_hallTicket.text.trim().isEmpty) {
+              _snack('Please fill in your Hall Ticket', error: true);
+              return;
+            }
+            if (_course == null || _branch == null || _year == null || _semester == null) {
+              _snack('Please fill in all academic details', error: true);
+              return;
+            }
+            _goToPage(2);
+          },
+        ),
+      ],
     );
   }
 
   Widget _page3() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CustomTextField(label: 'Password', controller: _password, isPassword: true, isRequired: true),
-          const SizedBox(height: 12),
-          CustomTextField(label: 'Confirm Password', controller: _confirmPassword, isPassword: true, isRequired: true),
-          const SizedBox(height: 32),
-          CustomButton(
-            text: 'Next: Upload Documents',
-            onPressed: () {
-              if (_password.text.isEmpty || _confirmPassword.text.isEmpty) {
-                _snack('Please enter password and confirm it', error: true);
-                return;
-              }
-              if (_password.text != _confirmPassword.text) {
-                _snack('Passwords do not match', error: true);
-                return;
-              }
-              _goToPage(3);
-            },
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CustomTextField(label: 'Password', controller: _password, isPassword: true, isRequired: true),
+        const SizedBox(height: 16),
+        CustomTextField(label: 'Confirm Password', controller: _confirmPassword, isPassword: true, isRequired: true),
+        const SizedBox(height: 32),
+        CustomButton(
+          text: 'Next: Upload Documents',
+          onPressed: () {
+            if (_password.text.isEmpty || _confirmPassword.text.isEmpty) {
+              _snack('Please enter password and confirm it', error: true);
+              return;
+            }
+            if (_password.text != _confirmPassword.text) {
+              _snack('Passwords do not match', error: true);
+              return;
+            }
+            _goToPage(3);
+          },
+        ),
+      ],
     );
   }
 
@@ -384,114 +517,140 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final studentIdName = _studentIdPath != null ? _studentIdPath!.split(Platform.pathSeparator).last : 'No file selected';
     final profilePhotoName = _profilePhotoPath != null ? _profilePhotoPath!.split(Platform.pathSeparator).last : 'No file selected';
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Identity Verification',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Identity Verification',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1A1A2E),
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Please upload your identity documents to submit your account for administrator approval.',
+          style: TextStyle(fontFamily: 'Poppins', color: Color(0xFF64748B), fontSize: 13),
+        ),
+        const SizedBox(height: 24),
+        Card(
+          elevation: 0,
+          color: Colors.white.withOpacity(0.6),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.white.withOpacity(0.8), width: 1.2),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.badge_outlined, color: Color(0xFF4F46E5)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Student ID Card',
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1A1A2E)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  studentIdName,
+                  style: TextStyle(fontFamily: 'Poppins', color: _studentIdPath != null ? const Color(0xFF1A1A2E) : Colors.grey, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: _pickStudentId,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4F46E5),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.upload_file, size: 18),
+                  label: const Text('Choose ID Card', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Please upload your identity documents to submit your account for administrator approval.',
-            style: TextStyle(color: Colors.grey, fontSize: 13),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          elevation: 0,
+          color: Colors.white.withOpacity(0.6),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.white.withOpacity(0.8), width: 1.2),
           ),
-          const SizedBox(height: 24),
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade300),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.badge_outlined, color: AppColors.primary),
-                      SizedBox(width: 8),
-                      Text(
-                        'Student ID Card',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ],
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.account_box_outlined, color: Color(0xFF4F46E5)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Profile Photo',
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1A1A2E)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  profilePhotoName,
+                  style: TextStyle(fontFamily: 'Poppins', color: _profilePhotoPath != null ? const Color(0xFF1A1A2E) : Colors.grey, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: _pickProfilePhoto,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4F46E5),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    studentIdName,
-                    style: TextStyle(color: _studentIdPath != null ? Colors.black87 : Colors.grey, fontSize: 13),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: _pickStudentId,
-                    icon: const Icon(Icons.upload_file),
-                    label: const Text('Choose ID Card'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade300),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.account_box_outlined, color: AppColors.primary),
-                      SizedBox(width: 8),
-                      Text(
-                        'Profile Photo',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    profilePhotoName,
-                    style: TextStyle(color: _profilePhotoPath != null ? Colors.black87 : Colors.grey, fontSize: 13),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: _pickProfilePhoto,
-                    icon: const Icon(Icons.add_a_photo_outlined),
-                    label: const Text('Choose Photo'),
-                  ),
-                ],
-              ),
+                  icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                  label: const Text('Choose Photo', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 32),
-          CustomButton(
-            text: 'Submit Registration',
-            onPressed: _register,
-            isLoading: _isLoading,
-            icon: Icons.done_all,
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 32),
+        CustomButton(
+          text: 'Submit Registration',
+          onPressed: _register,
+          isLoading: _isLoading,
+          icon: Icons.done_all,
+        ),
+      ],
     );
   }
 
   Widget _dropdown(String label, String? value, List<String> items, Function(String?) onChanged) {
     return DropdownButtonFormField<String>(
-      initialValue: value,
+      value: value,
       isExpanded: true,
-      decoration: InputDecoration(labelText: label),
+      style: const TextStyle(fontFamily: 'Poppins', color: Color(0xFF1A1A2E), fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w500),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.6),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.7)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 1.6),
+        ),
+      ),
       items: items.map((i) => DropdownMenuItem(value: i, child: Text(i))).toList(),
       onChanged: onChanged,
     );

@@ -1,10 +1,12 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import prisma from '../lib/prisma.js';
 import { normalizePhone } from '../lib/phone.js';
 import { signToken } from '../middleware/auth.middleware.js';
 import { broadcastToUser } from '../services/socket_service.js';
 import { uploadBuffer } from '../services/cloudinary.service.js';
 import { linkAndConfirmPhone } from '../services/supabaseAdmin.service.js';
+import { sendLiveOtpSms } from '../services/otp_delivery.service.js';
 
 // ─────────────────────────────────────────────────────────────────────────
 // OTP (sendOtp / verifyOtp / resetPassword) has been REMOVED from this
@@ -24,13 +26,22 @@ import { linkAndConfirmPhone } from '../services/supabaseAdmin.service.js';
 // ─────────────────────────────────────────────────────────────────────────
 
 function studentResponse(student) {
-  const { passwordHash, ...safe } = student;
+  const { passwordHash, otpCode, otpExpiresAt, ...safe } = student;
   return safe;
+}
+
+function generateOtp() {
+  return String(crypto.randomInt(100000, 999999));
+}
+
+function maskMobile(mobile) {
+  return mobile.replace(/(\d{2})\d+(\d{2})$/, '$1******$2');
 }
 
 export async function register(req, res, next) {
   try {
     const {
+      id,
       firstName,
       lastName,
       fullNameAadhar,
@@ -47,6 +58,8 @@ export async function register(req, res, next) {
       passingYear,
       gender,
       state,
+      profilePicUrl,
+      idCardUrl,
     } = req.body;
 
     const normalizedMobile = normalizePhone(mobile);
@@ -55,6 +68,7 @@ export async function register(req, res, next) {
     const passwordHash = await bcrypt.hash(password, 10);
     const student = await prisma.student.create({
       data: {
+        id: id || undefined,
         firstName,
         lastName,
         fullNameAadhar,
@@ -71,6 +85,8 @@ export async function register(req, res, next) {
         passingYear,
         gender,
         state,
+        profilePicUrl: profilePicUrl || null,
+        idCardUrl: idCardUrl || null,
         isMobileVerified: true,
         isEmailVerified: true,
       },
@@ -121,8 +137,92 @@ export async function login(req, res, next) {
       return res.status(403).json({ error: 'Your student account is pending approval by the college administration.' });
     }
 
+    const otp = generateOtp();
+    await prisma.student.update({
+      where: { id: student.id },
+      data: {
+        otpCode: otp,
+        otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+      },
+    });
+
+    try {
+      await sendLiveOtpSms(student.mobile, otp);
+    } catch (smsErr) {
+      console.error('Failed to send login OTP SMS:', smsErr);
+    }
+
+    res.json({
+      requiresOtp: true,
+      studentId: student.id,
+      maskedMobile: maskMobile(student.mobile),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function verifyLoginOtp(req, res, next) {
+  try {
+    const { studentId, otp } = req.body;
+    if (!studentId || !otp) {
+      return res.status(400).json({ error: 'studentId and otp are required' });
+    }
+
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: { university: true, college: true },
+    });
+
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    if (!student.otpCode || student.otpCode !== otp) {
+      return res.status(400).json({ error: 'Incorrect OTP' });
+    }
+
+    if (!student.otpExpiresAt || student.otpExpiresAt < new Date()) {
+      return res.status(400).json({ error: 'OTP has expired' });
+    }
+
+    // Clear OTP code on success
+    await prisma.student.update({
+      where: { id: student.id },
+      data: { otpCode: null, otpExpiresAt: null },
+    });
+
     const token = signToken({ sub: student.id, role: student.role });
     res.json({ token, student: studentResponse(student) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resendLoginOtp(req, res, next) {
+  try {
+    const { studentId } = req.body;
+    if (!studentId) return res.status(400).json({ error: 'studentId required' });
+
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+    });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    const otp = generateOtp();
+    await prisma.student.update({
+      where: { id: student.id },
+      data: {
+        otpCode: otp,
+        otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
+
+    try {
+      await sendLiveOtpSms(student.mobile, otp);
+    } catch (smsErr) {
+      console.error('Failed to resend login OTP SMS:', smsErr);
+    }
+
+    res.json({ message: 'OTP sent successfully' });
   } catch (err) {
     next(err);
   }
