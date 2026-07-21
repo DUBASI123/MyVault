@@ -11,42 +11,9 @@ import '../../../shared/models/student_model.dart';
 // Point this at the Render production API URL
 const String _backendBaseUrl = 'https://myvault-jbd7.onrender.com/api';
 
-
-
-// ─── OTP result wrapper (kept so UI code doesn't need to change shape) ───────
-class OtpSendResult {
-  final String? verificationId; // unused with Supabase but kept for UI compatibility
-  final bool autoVerified;      // always false with Supabase OTP
-  final String? otpPreview;     // always null in production
-  const OtpSendResult({this.verificationId, this.autoVerified = false, this.otpPreview});
-}
-
-// ─── Backend Login OTP Results ──────────────────────────────────────────────
+// ─── Login Result ─────────────────────────────────────────────────────────────
 sealed class LoginResult {}
-
 class LoginSuccess extends LoginResult {}
-
-class LoginOtpRequired extends LoginResult {
-  final String studentId;
-  final String mobile;        // full E.164 number, needed to call Supabase directly
-  final String maskedMobile;  // for display only
-  LoginOtpRequired({
-    required this.studentId,
-    required this.mobile,
-    required this.maskedMobile,
-  });
-}
-
-/// Normalizes an Indian mobile number to E.164 (+91XXXXXXXXXX) for Supabase phone auth.
-String normalizePhoneE164(String raw) {
-  var digits = raw.trim().replaceAll(RegExp(r'[^0-9+]'), '');
-  if (digits.startsWith('+')) return digits;
-  if (digits.startsWith('91') && digits.length == 12) return '+$digits';
-  if (digits.length == 10) return '+91$digits';
-  return '+$digits';
-}
-
-bool isEmailTarget(String value) => value.contains('@');
 
 // ─── Current student provider ─────────────────────────────────────────────────
 final currentStudentProvider =
@@ -105,10 +72,7 @@ class AuthRepository {
   SupabaseClient get _db => SupabaseService.client;
 
   // ── Login ──────────────────────────────────────────────────────────────────
-  // Step 1: verify identifier + password against our backend. If valid, the
-  // backend does NOT send any SMS itself — it just returns the account's
-  // mobile number so we can trigger Supabase's own OTP send here, the same
-  // reliable path already used by registration.
+  // Validates identifier + password against backend. Returns token directly.
   Future<LoginResult> login({
     required String identifier,
     required String password,
@@ -119,8 +83,6 @@ class AuthRepository {
         'identifier': identifier,
         'password': password,
       });
-      print('🚀 [API REQ] URL: $url');
-      print('🚀 [API REQ] BODY: $body');
 
       final response = await http.post(
         url,
@@ -128,69 +90,17 @@ class AuthRepository {
         body: body,
       );
 
-      print('🚀 [API RES] STATUS: ${response.statusCode}');
-      print('🚀 [API RES] BODY: ${response.body}');
-
       final data = jsonDecode(response.body);
       if (response.statusCode != 200) {
         throw Exception(data['error'] ?? 'Login failed');
       }
 
-      if (data['requiresOtp'] == true) {
-        return LoginOtpRequired(
-          studentId: data['studentId'] as String,
-          mobile: '',
-          maskedMobile: data['maskedMobile'] as String,
-        );
-      } else if (data['token'] != null) {
+      if (data['token'] != null) {
         await _persistSession(data);
         return LoginSuccess();
       }
 
       throw Exception('Unexpected response from server');
-    } catch (e) {
-      print('🚀 [API ERR]: $e');
-      throw Exception(e.toString().replaceFirst('Exception: ', ''));
-    }
-  }
-
-  Future<void> verifyLoginOtp({
-    required String studentId,
-    required String otp,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$_backendBaseUrl/auth/login/verify-otp'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'studentId': studentId,
-          'otp': otp,
-        }),
-      );
-
-      final data = jsonDecode(response.body);
-      if (response.statusCode != 200) {
-        throw Exception(data['error'] ?? 'Verification failed');
-      }
-
-      await _persistSession(data);
-    } catch (e) {
-      throw Exception(e.toString().replaceFirst('Exception: ', ''));
-    }
-  }
-
-  Future<void> resendLoginOtp({required String studentId}) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$_backendBaseUrl/auth/login/resend-otp'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'studentId': studentId}),
-      );
-
-      final data = jsonDecode(response.body);
-      if (response.statusCode != 200) {
-        throw Exception(data['error'] ?? 'Resend failed');
-      }
     } catch (e) {
       throw Exception(e.toString().replaceFirst('Exception: ', ''));
     }
@@ -264,82 +174,10 @@ class AuthRepository {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Password-reset OTP (separate from registration above)
+  // Password reset — direct update via Supabase session (no OTP)
   // ─────────────────────────────────────────────────────────────────────────
 
-  Future<OtpSendResult> sendOtp(String target, {String purpose = 'reset'}) async {
-    try {
-      if (isEmailTarget(target)) {
-        await _db.auth.signInWithOtp(
-          email: target.trim().toLowerCase(),
-          shouldCreateUser: false,
-        );
-      } else {
-        await _db.auth.signInWithOtp(
-          phone: normalizePhoneE164(target),
-          shouldCreateUser: false,
-        );
-      }
-      return const OtpSendResult();
-    } on AuthException catch (e) {
-      final msg = e.message.toLowerCase();
-      if (msg.contains('rate limit') || msg.contains('too many')) {
-        throw Exception('Too many OTP requests. Please wait a minute and try again.');
-      }
-      if (msg.contains('not allowed') || msg.contains('not found')) {
-        throw Exception('No account found for this mobile/email.');
-      }
-      throw Exception('Failed to send OTP: ${e.message}');
-    } catch (e) {
-      throw Exception('Failed to send OTP: $e');
-    }
-  }
-
-  Future<bool> verifyOtp(
-    String target,
-    String otp, {
-    String? verificationId,
-    String purpose = 'reset',
-  }) async {
-    try {
-      final AuthResponse response;
-      if (isEmailTarget(target)) {
-        response = await _db.auth.verifyOTP(
-          email: target.trim().toLowerCase(),
-          token: otp,
-          type: OtpType.email,
-        );
-      } else {
-        response = await _db.auth.verifyOTP(
-          phone: normalizePhoneE164(target),
-          token: otp,
-          type: OtpType.sms,
-        );
-      }
-      return response.session != null;
-    } on AuthException catch (e) {
-      final msg = e.message.toLowerCase();
-      if (msg.contains('expired')) {
-        throw Exception('OTP has expired. Please request a new one.');
-      }
-      if (msg.contains('invalid') || msg.contains('token')) {
-        return false;
-      }
-      throw Exception('OTP verification failed: ${e.message}');
-    } catch (e) {
-      return false;
-    }
-  }
-
-  Future<void> resetPassword(
-    String contact,
-    String otp,
-    String newPassword,
-  ) async {
-    final user = SupabaseService.currentUser;
-    if (user == null) {
-      throw Exception('OTP session expired. Please verify OTP again.');
-    }
+  Future<void> resetPassword(String newPassword) async {
     try {
       await _db.auth.updateUser(UserAttributes(password: newPassword));
       await SupabaseService.signOut();

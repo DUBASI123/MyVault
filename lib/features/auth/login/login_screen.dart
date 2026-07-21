@@ -16,15 +16,12 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-enum _Step { credentials, otp }
-
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   final _captchaController = TextEditingController();
-  final _otpController = TextEditingController();
 
   bool _isLoading = false;
   String _loadingStatus = '';
@@ -32,10 +29,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Timer? _statusTimer2;
   bool _obscurePassword = true;
   String _captchaText = '';
-  _Step _step = _Step.credentials;
-  String? _studentId;
-  String? _mobile;
-  String? _maskedMobile;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
@@ -71,7 +64,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     _identifierController.dispose();
     _passwordController.dispose();
     _captchaController.dispose();
-    _otpController.dispose();
     super.dispose();
   }
 
@@ -117,14 +109,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
       if (!mounted) return;
 
-      if (result is LoginOtpRequired) {
-        setState(() {
-          _studentId = result.studentId;
-          _mobile = result.mobile;
-          _maskedMobile = result.maskedMobile;
-          _step = _Step.otp;
-        });
-      } else if (result is LoginSuccess) {
+      if (result is LoginSuccess) {
         context.go(AppRoutes.home);
       } else {
         _snack('Unexpected login result. Please try again.', error: true);
@@ -138,39 +123,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       _statusTimer1?.cancel();
       _statusTimer2?.cancel();
       if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _submitOtp() async {
-    if (_otpController.text.trim().length != 6) {
-      _snack('Enter the 6-digit code', error: true);
-      return;
-    }
-    setState(() => _isLoading = true);
-    try {
-      await ref.read(authRepositoryProvider).verifyLoginOtp(
-            studentId: _studentId!,
-            otp: _otpController.text.trim(),
-          );
-      if (mounted) context.go(AppRoutes.home);
-    } catch (e) {
-      if (mounted) {
-        final msg = e.toString().replaceFirst('Exception: ', '');
-        _snack(msg, error: true);
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _resendOtp() async {
-    if (_studentId == null) return;
-    try {
-      await ref.read(authRepositoryProvider).resendLoginOtp(studentId: _studentId!);
-      _snack('OTP resent to $_maskedMobile');
-    } catch (e) {
-      final msg = e.toString().replaceFirst('Exception: ', '');
-      _snack(msg, error: true);
     }
   }
 
@@ -273,13 +225,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       ),
                     ),
                     const SizedBox(height: 28),
-
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: _step == _Step.credentials
-                          ? _buildCredentialsCard(key: const ValueKey('creds'))
-                          : _buildOtpCard(key: const ValueKey('otp')),
-                    ),
+                    _buildCredentialsCard(),
                   ],
                 ),
               ),
@@ -317,9 +263,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildCredentialsCard({Key? key}) {
+  Widget _buildCredentialsCard() {
     return _glassCard(
-      key: key,
       child: Form(
         key: _formKey,
         child: Column(
@@ -472,68 +417,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             ],
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildOtpCard({Key? key}) {
-    return _glassCard(
-      key: key,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => setState(() => _step = _Step.credentials),
-                icon: const Icon(Icons.arrow_back_rounded),
-              ),
-              const SizedBox(width: 4),
-              const Text(
-                'Verify your identity',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A2E),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              'Enter the 6-digit code sent to ${_maskedMobile ?? "your registered mobile"}',
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Color(0xFF64748B)),
-            ),
-          ),
-          const SizedBox(height: 24),
-          TextFormField(
-            controller: _otpController,
-            keyboardType: TextInputType.number,
-            maxLength: 6,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 22, letterSpacing: 10, fontWeight: FontWeight.w700),
-            decoration: _fieldDecoration('••••••').copyWith(counterText: ''),
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: _resendOtp,
-              child: const Text('Resend OTP',
-                  style: TextStyle(fontFamily: 'Poppins', color: Color(0xFF4F46E5))),
-            ),
-          ),
-          const SizedBox(height: 8),
-          CustomButton(
-            text: 'Verify & Login',
-            onPressed: _submitOtp,
-            isLoading: _isLoading,
-            icon: Icons.verified_rounded,
-          ),
-        ],
       ),
     );
   }

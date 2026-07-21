@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pinput/pinput.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_text_styles.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
-import '../../../shared/widgets/otp_verification_badge.dart';
-import '../data/auth_repository.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -18,77 +16,40 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
-  String _mode = 'mobile';
-  OtpBadgeStatus _otpStatus = OtpBadgeStatus.pending;
   bool _isLoading = false;
 
-  final _email = TextEditingController();
-  final _mobile = TextEditingController();
-  final _otp = TextEditingController();
+  final _identifier = TextEditingController(); // mobile or hall ticket
   final _newPassword = TextEditingController();
   final _confirmPassword = TextEditingController();
+  bool _obscureNew = true;
+  bool _obscureConfirm = true;
+
+  static const _backendBaseUrl = 'https://myvault-jbd7.onrender.com/api';
 
   @override
   void dispose() {
-    _email.dispose();
-    _mobile.dispose();
-    _otp.dispose();
+    _identifier.dispose();
     _newPassword.dispose();
     _confirmPassword.dispose();
     super.dispose();
   }
 
-  String get _target => _mode == 'email' ? _email.text.trim() : _mobile.text.trim();
-
   void _snack(String msg, {bool error = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: error ? AppColors.error : AppColors.success),
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: error ? AppColors.error : AppColors.success,
+      ),
     );
   }
 
-  Future<void> _sendOtp() async {
-    if (_target.isEmpty) {
-      _snack('Enter ${_mode == 'email' ? 'email' : 'mobile'}', error: true);
-      return;
-    }
-    setState(() => _isLoading = true);
-    try {
-      await ref.read(authRepositoryProvider).sendOtp(_target, purpose: 'reset');
-      setState(() => _otpStatus = OtpBadgeStatus.sent);
-      _snack('OTP sent to $_target');
-    } catch (e) {
-      setState(() => _otpStatus = OtpBadgeStatus.failed);
-      _snack(e.toString().replaceFirst('Exception: ', ''), error: true);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _verifyOtp() async {
-    if (_otp.text.length != 6) {
-      _snack('Enter 6-digit OTP', error: true);
-      return;
-    }
-    setState(() => _isLoading = true);
-    try {
-      final ok = await ref.read(authRepositoryProvider).verifyOtp(
-            _target,
-            _otp.text,
-            purpose: 'reset',
-          );
-      setState(() => _otpStatus = ok ? OtpBadgeStatus.verified : OtpBadgeStatus.failed);
-      _snack(ok ? 'OTP verified' : 'Invalid OTP', error: !ok);
-    } catch (e) {
-      setState(() => _otpStatus = OtpBadgeStatus.failed);
-      _snack(e.toString().replaceFirst('Exception: ', ''), error: true);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   Future<void> _reset() async {
-    if (_otpStatus != OtpBadgeStatus.verified) {
-      _snack('Verify OTP first', error: true);
+    if (_identifier.text.trim().isEmpty) {
+      _snack('Enter your mobile or hall ticket number', error: true);
+      return;
+    }
+    if (_newPassword.text.length < 6) {
+      _snack('Password must be at least 6 characters', error: true);
       return;
     }
     if (_newPassword.text != _confirmPassword.text) {
@@ -97,17 +58,25 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     }
     setState(() => _isLoading = true);
     try {
-      await ref.read(authRepositoryProvider).resetPassword(
-            _target,
-            _otp.text,
-            _newPassword.text,
-          );
-      if (mounted) {
-        _snack('Password reset successful');
-        context.go(AppRoutes.login);
+      final response = await http.post(
+        Uri.parse('$_backendBaseUrl/auth/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'identifier': _identifier.text.trim(),
+          'newPassword': _newPassword.text,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        if (mounted) {
+          _snack('Password reset successful! Please login.');
+          context.go(AppRoutes.login);
+        }
+      } else {
+        _snack(data['error'] ?? 'Reset failed. Please try again.', error: true);
       }
     } catch (e) {
-      _snack(e.toString().replaceFirst('Exception: ', ''), error: true);
+      _snack('Network error. Please try again.', error: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -115,94 +84,65 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pinTheme = PinTheme(
-      width: 48,
-      height: 52,
-      decoration: BoxDecoration(
-        color: AppColors.inputFill,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-    );
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Forgot Password')),
+      appBar: AppBar(
+        title: const Text('Reset Password'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Text('OTP Status', style: AppTextStyles.label),
-                const Spacer(),
-                OtpVerificationBadge(status: _otpStatus),
-              ],
+            const SizedBox(height: 12),
+            const Text(
+              'Reset your password',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 20),
-            if (_otpStatus != OtpBadgeStatus.verified) ...[
-              Row(
-                children: [
-                  Expanded(child: _modeBtn('Mobile', 'mobile')),
-                  const SizedBox(width: 12),
-                  Expanded(child: _modeBtn('Email', 'email')),
-                ],
-              ),
-              const SizedBox(height: 20),
-              if (_mode == 'email')
-                CustomTextField(label: 'Email', controller: _email, keyboardType: TextInputType.emailAddress)
-              else
-                CustomTextField(label: 'Mobile', controller: _mobile, keyboardType: TextInputType.phone),
-              const SizedBox(height: 20),
-              if (_otpStatus == OtpBadgeStatus.pending || _otpStatus == OtpBadgeStatus.failed)
-                CustomButton(text: 'Send OTP', onPressed: _sendOtp, isLoading: _isLoading, icon: Icons.send_outlined),
-              if (_otpStatus == OtpBadgeStatus.sent || _otpStatus == OtpBadgeStatus.failed) ...[
-                const SizedBox(height: 16),
-                const Text('Enter OTP', style: AppTextStyles.bodySmall),
-                const SizedBox(height: 8),
-                Pinput(
-                  controller: _otp,
-                  length: 6,
-                  defaultPinTheme: pinTheme,
-                  onCompleted: (_) => _verifyOtp(),
+            const SizedBox(height: 8),
+            const Text(
+              'Enter your mobile number or hall ticket and set a new password.',
+              style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 32),
+            CustomTextField(
+              label: 'Mobile or Hall Ticket',
+              controller: _identifier,
+              keyboardType: TextInputType.text,
+              isRequired: true,
+            ),
+            const SizedBox(height: 16),
+            CustomTextField(
+              label: 'New Password',
+              controller: _newPassword,
+              isPassword: true,
+              isRequired: true,
+            ),
+            const SizedBox(height: 16),
+            CustomTextField(
+              label: 'Confirm Password',
+              controller: _confirmPassword,
+              isPassword: true,
+              isRequired: true,
+            ),
+            const SizedBox(height: 28),
+            CustomButton(
+              text: 'Reset Password',
+              onPressed: _reset,
+              isLoading: _isLoading,
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: TextButton(
+                onPressed: () => context.go(AppRoutes.login),
+                child: const Text(
+                  'Back to Login',
+                  style: TextStyle(color: Color(0xFF4F46E5)),
                 ),
-                const SizedBox(height: 16),
-                CustomButton(text: 'Verify OTP', onPressed: _verifyOtp, isLoading: _isLoading, icon: Icons.verified_outlined),
-              ],
-            ],
-            if (_otpStatus == OtpBadgeStatus.verified) ...[
-              CustomTextField(label: 'New Password', controller: _newPassword, isPassword: true),
-              const SizedBox(height: 12),
-              CustomTextField(label: 'Confirm Password', controller: _confirmPassword, isPassword: true),
-              const SizedBox(height: 20),
-              CustomButton(text: 'Reset Password', onPressed: _reset, isLoading: _isLoading),
-            ],
+              ),
+            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _modeBtn(String label, String mode) {
-    final selected = _mode == mode;
-    return GestureDetector(
-      onTap: () => setState(() {
-        _mode = mode;
-        _otpStatus = OtpBadgeStatus.pending;
-        _otp.clear();
-      }),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(color: selected ? AppColors.textWhite : AppColors.textSecondary),
-          ),
         ),
       ),
     );

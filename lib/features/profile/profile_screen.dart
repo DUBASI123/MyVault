@@ -9,7 +9,7 @@ import '../../core/router/app_router.dart';
 import '../../core/services/cloudinary_service.dart';
 import '../../shared/widgets/app_scaffold.dart';
 import '../../shared/widgets/college_logo_header.dart';
-import '../../shared/widgets/otp_verification_badge.dart';
+import '../../shared/widgets/custom_button.dart';
 import '../auth/data/auth_repository.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -328,8 +328,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       subtitle: Text(value, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w500)),
       trailing: verified == null
           ? null
-          : OtpVerificationBadge(
-              status: verified ? OtpBadgeStatus.verified : OtpBadgeStatus.pending,
+          : Icon(
+              verified ? Icons.verified_rounded : Icons.pending_outlined,
+              color: verified ? Colors.green : Colors.orange,
+              size: 20,
             ),
       dense: true,
     );

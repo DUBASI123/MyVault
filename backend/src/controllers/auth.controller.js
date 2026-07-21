@@ -6,30 +6,6 @@ import { signToken } from '../middleware/auth.middleware.js';
 import { broadcastToUser } from '../services/socket_service.js';
 import { uploadBuffer } from '../services/cloudinary.service.js';
 import { linkAndConfirmPhone } from '../services/supabaseAdmin.service.js';
-import { createOtp, verifyOtp } from '../utils/otp.js';
-
-// ─────────────────────────────────────────────────────────────────────────
-// Login OTP now uses the SAME delivery path as registration: Supabase Auth's
-// built-in phone OTP (Authentication → Providers → Phone in the Supabase
-// dashboard), instead of the old custom sendLiveOtpSms/Twilio path.
-//
-// New flow:
-//   1. POST /auth/login          — validates identifier+password only.
-//                                   Returns requiresOtp + the student's full
-//                                   mobile (E.164) so the Flutter client can
-//                                   call Supabase's signInWithOtp directly.
-//   2. Flutter calls Supabase signInWithOtp(phone) — Supabase sends the SMS.
-//   3. Flutter calls Supabase verifyOTP(phone, token) — Supabase confirms it
-//      and returns a session/access token.
-//   4. POST /auth/login/confirm-otp — Flutter sends { studentId, accessToken }.
-//      This backend verifies that access token against Supabase (via the
-//      admin client below) and confirms the verified phone matches the
-//      student's mobile on file, THEN issues this app's own JWT.
-//
-// The old otpCode/otpExpiresAt columns and the custom SMS delivery service
-// are no longer used by login. They can be dropped in a future migration
-// once you confirm nothing else reads them.
-// ─────────────────────────────────────────────────────────────────────────
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
@@ -152,46 +128,6 @@ export async function login(req, res, next) {
     next(err);
   }
 }
-
-export async function verifyLoginOtp(req, res, next) {
-  try {
-    const { studentId, otp } = req.body;
-    if (!studentId || !otp) {
-      return res.status(400).json({ error: 'studentId and otp are required' });
-    }
-
-    const student = await prisma.student.findUnique({
-      where: { id: studentId },
-      include: { university: true, college: true },
-    });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
-
-    await verifyOtp(student.mobile, 'login', otp);
-
-    const token = signToken({ sub: student.id, role: student.role });
-    res.json({ token, student: studentResponse(student) });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-}
-
-export async function resendLoginOtp(req, res, next) {
-  try {
-    const { studentId } = req.body;
-    if (!studentId) return res.status(400).json({ error: 'studentId is required' });
-
-    const student = await prisma.student.findUnique({
-      where: { id: studentId }
-    });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
-
-    await createOtp(student.mobile, 'SMS', 'login');
-    res.json({ message: 'OTP resent successfully' });
-  } catch (err) {
-    next(err);
-  }
-}
-
 
 
 export async function getMe(req, res, next) {
@@ -340,6 +276,45 @@ export async function linkPhone(req, res, next) {
 
     const user = await linkAndConfirmPhone(userId, e164);
     res.json({ message: 'Phone linked and confirmed', phone: user.phone });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resetPassword(req, res, next) {
+  try {
+    const { identifier, newPassword } = req.body;
+    if (!identifier || !newPassword) {
+      return res.status(400).json({ error: 'identifier and newPassword required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const id = String(identifier).trim();
+    const { normalizePhone } = await import('../lib/phone.js');
+    const mobileGuess = id.includes('@') ? null : normalizePhone(id);
+
+    const student = await prisma.student.findFirst({
+      where: {
+        OR: [
+          { email: id.toLowerCase() },
+          { hallTicket: id },
+          { mobile: id },
+          ...(mobileGuess ? [{ mobile: mobileGuess }] : []),
+        ],
+      },
+    });
+
+    if (!student) return res.status(404).json({ error: 'No account found for the provided identifier' });
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await prisma.student.update({
+      where: { id: student.id },
+      data: { passwordHash },
+    });
+
+    res.json({ message: 'Password reset successfully' });
   } catch (err) {
     next(err);
   }

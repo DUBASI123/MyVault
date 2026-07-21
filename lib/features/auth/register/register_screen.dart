@@ -9,15 +9,13 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/mock/mock_data.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/services/master_service.dart';
-import '../../../core/storage/app_storage.dart';
 import '../../../shared/models/college_model.dart';
-import '../../../core/services/otp_service.dart';
 import '../../../shared/models/student_model.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/auth_repository.dart';
-import 'otp_verification_block.dart';
+
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -40,8 +38,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
 
-  // --- OTP verification state ---
-  bool _mobileVerified = false;
+  // Registration state
   bool _aadharManuallyEdited = false;
 
   String? _university;
@@ -63,7 +60,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   void initState() {
     super.initState();
     _loadColleges();
-    _mobile.addListener(_onMobileChanged);
     _firstName.addListener(_syncFullNameAadhar);
     _lastName.addListener(_syncFullNameAadhar);
   }
@@ -103,13 +99,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
   }
 
-  void _onMobileChanged() {
-    if (_mobileVerified) {
-      setState(() {
-        _mobileVerified = false;
-      });
-    }
-  }
 
   @override
   void dispose() {
@@ -119,7 +108,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _firstName.dispose();
     _lastName.dispose();
     _aadharName.dispose();
-    _mobile.removeListener(_onMobileChanged);
     _mobile.dispose();
     _email.dispose();
     _hallTicket.dispose();
@@ -173,15 +161,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _snack('Please upload your Profile Photo', error: true);
       return;
     }
-    if (!_mobileVerified) {
-      _snack('Please verify your mobile number before submitting', error: true);
-      return;
-    }
-
     setState(() => _isLoading = true);
 
-    final emailTarget = _email.text.trim();
-    final mobileTarget = OtpService.normalizePhone(_mobile.text.trim());
+    final mobileTarget = _mobile.text.trim();
 
     try {
       final student = StudentModel(
@@ -190,7 +172,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         lastName: _lastName.text.trim(),
         fullNameAadhar: _aadharName.text.trim(),
         mobile: mobileTarget,
-        email: emailTarget,
+        email: _email.text.trim(),
         hallTicket: _hallTicket.text.trim(),
         universityId: _universityId ?? '1',
         collegeId: _collegeId ?? 'c_1',
@@ -388,12 +370,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           keyboardType: TextInputType.phone,
           isRequired: true,
         ),
-        const SizedBox(height: 8),
-        OtpVerifyTrigger(
-          target: _mobile.text,
-          isVerified: _mobileVerified,
-          onVerified: () => setState(() => _mobileVerified = true),
-        ),
         const SizedBox(height: 16),
         CustomTextField(
           label: 'Email',
@@ -430,19 +406,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         const SizedBox(height: 28),
         CustomButton(
           text: 'Next: Academic Info',
-          onPressed: _mobileVerified
-              ? () {
-                  if (_firstName.text.trim().isEmpty || _lastName.text.trim().isEmpty || _aadharName.text.trim().isEmpty) {
-                    _snack('Please fill in First Name, Last Name and Aadhaar Name', error: true);
-                    return;
-                  }
-                  if (_college == null) {
-                    _snack('Please select College', error: true);
-                    return;
-                  }
-                  _goToPage(1);
-                }
-              : null,
+          onPressed: () {
+            if (_firstName.text.trim().isEmpty || _lastName.text.trim().isEmpty || _aadharName.text.trim().isEmpty) {
+              _snack('Please fill in First Name, Last Name and Aadhaar Name', error: true);
+              return;
+            }
+            if (_college == null) {
+              _snack('Please select College', error: true);
+              return;
+            }
+            _goToPage(1);
+          },
         ),
       ],
     );
