@@ -82,47 +82,10 @@ async function main() {
       VALUES (gen_random_uuid(), 'Soft Skills & Leadership', 'COMM_SOFT', 'CSE', 1, 'comm_skill') RETURNING id;
     `))[0].id;
 
-    // 4. Seed Academic Contents
-    console.log("Seeding academic contents for subjects...");
-    const contents = [
-      // Java content
-      { subjectId: s_java, title: 'Java Variables & OOP Principles Notes', contentType: 'notes', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-      { subjectId: s_java, title: 'Java Multi-threading Video Tutorial', contentType: 'video', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-      { subjectId: s_java, title: 'Lab Assignment 1: Polymorphism', contentType: 'lab_manual', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-      
-      // Python content
-      { subjectId: s_python, title: 'Python Syntax & Lists Cheatsheet', contentType: 'notes', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-      { subjectId: s_python, title: 'Flask vs Django Video Overview', contentType: 'video', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+    // 4. Clear Academic Contents
+    console.log("Clearing academic contents for clean subject environment...");
+    await prisma.$executeRawUnsafe(`DELETE FROM academic_contents;`);
 
-      // Flutter content
-      { subjectId: s_flutter, title: 'Flutter Widgets & State Management Slide', contentType: 'notes', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-      { subjectId: s_flutter, title: 'Dart Async/Await Complete Guide', contentType: 'video', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-
-      // DSA content
-      { subjectId: s_dsa, title: 'Array and Hashing Coding Questions', contentType: 'question_paper', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-      { subjectId: s_dsa, title: 'Trees & Graphs Interview Questions Guide', contentType: 'notes', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-
-      // Aptitude content
-      { subjectId: s_apti, title: 'Quantitative Aptitude Formula Sheet', contentType: 'notes', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-      { subjectId: s_apti, title: 'Logical Reasoning Mock Paper', contentType: 'question_paper', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-
-      // GATE content
-      { subjectId: s_gate, title: 'GATE CS 2024 Question Paper with Solutions', contentType: 'question_paper', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-
-      // Comm Skills content
-      { subjectId: s_comm, title: 'Professional Email Writing Templates', contentType: 'notes', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-      { subjectId: s_comm, title: 'Public Speaking Hacks & Slide Design', contentType: 'notes', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-
-      // Soft Skills content
-      { subjectId: s_soft, title: 'Time Management Matrix & Goals Template', contentType: 'notes', fileUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }
-    ];
-
-    for (const c of contents) {
-      await prisma.$executeRawUnsafe(`
-        INSERT INTO academic_contents (id, subject_id, title, content_type, file_url, created_at)
-        VALUES (gen_random_uuid(), '${c.subjectId}', '${c.title}', '${c.contentType}', '${c.fileUrl}', NOW());
-      `);
-    }
 
     // 5. Seed Exam Results
     console.log("Seeding exam results...");
