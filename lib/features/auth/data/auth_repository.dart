@@ -128,18 +128,11 @@ class AuthRepository {
       final profilePicUrl = await CloudinaryService.uploadFile(File(profilePicPath));
       if (profilePicUrl == null) throw Exception('Failed to upload Profile Photo.');
 
-      // Update temporary password set during inline verification to user's real password
-      await _db.auth.updateUser(UserAttributes(password: password));
-
-      final user = _db.auth.currentUser;
-      if (user == null) throw Exception('Session expired. Please verify mobile again.');
-
       // Post to our Node.js backend to register the Prisma student record
       final response = await http.post(
         Uri.parse('$_backendBaseUrl/auth/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'id': user.id,
           'firstName': student.firstName,
           'lastName': student.lastName,
           'fullNameAadhar': student.fullNameAadhar,
@@ -166,7 +159,6 @@ class AuthRepository {
         throw Exception(data['error'] ?? 'Registration failed');
       }
 
-      await SupabaseService.signOut();
       _ref.read(currentStudentProvider.notifier).clear();
     } catch (e) {
       throw Exception(e.toString().replaceFirst('Exception: ', ''));
