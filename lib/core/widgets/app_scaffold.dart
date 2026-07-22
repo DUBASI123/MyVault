@@ -11,6 +11,7 @@ class AppScaffold extends ConsumerWidget {
   final List<Widget>? actions;
   final Widget? bottomNavigationBar;
   final Widget? floatingActionButton;
+  final FloatingActionButtonLocation? floatingActionButtonLocation;
   final bool showAppBar;
 
   const AppScaffold({
@@ -20,6 +21,7 @@ class AppScaffold extends ConsumerWidget {
     this.actions,
     this.bottomNavigationBar,
     this.floatingActionButton,
+    this.floatingActionButtonLocation,
     this.showAppBar = true,
   });
 
@@ -40,6 +42,7 @@ class AppScaffold extends ConsumerWidget {
       ),
       bottomNavigationBar: bottomNavigationBar,
       floatingActionButton: floatingActionButton,
+      floatingActionButtonLocation: floatingActionButtonLocation,
     );
   }
 }

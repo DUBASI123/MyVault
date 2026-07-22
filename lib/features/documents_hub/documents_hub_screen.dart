@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +11,6 @@ import 'dart:convert';
 import 'package:open_filex/open_filex.dart';
 import '../../core/constants/app_colors.dart';
 import '../../shared/widgets/app_scaffold.dart';
-
 
 // ─── Document Model ──────────────────────────────────────────────────────────
 
@@ -109,7 +109,300 @@ class _DocCategory {
   const _DocCategory(this.name, this.icon, this.color);
 }
 
-// ─── Screen ──────────────────────────────────────────────────────────────────
+// ─── Documents Hub Modal Bottom Sheet ─────────────────────────────────────────
+
+void showAddDocumentSheet(BuildContext context, WidgetRef ref) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => AddDocumentSheet(ref: ref),
+  );
+}
+
+class AddDocumentSheet extends StatefulWidget {
+  final WidgetRef ref;
+  const AddDocumentSheet({super.key, required this.ref});
+
+  @override
+  State<AddDocumentSheet> createState() => _AddDocumentSheetState();
+}
+
+class _AddDocumentSheetState extends State<AddDocumentSheet> {
+  String? _selectedSource;
+  String _selectedCategory = 'Certificates';
+  final _titleCtrl = TextEditingController();
+  File? _selectedFile;
+  String _fileSizeStr = '0 KB';
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickSource(String source) async {
+    setState(() => _selectedSource = source);
+    File? picked;
+    String sizeStr = '0 KB';
+
+    if (source == 'Camera') {
+      final picker = ImagePicker();
+      final xfile = await picker.pickImage(source: ImageSource.camera);
+      if (xfile != null) {
+        picked = File(xfile.path);
+        final len = await picked.length();
+        sizeStr = '${(len / 1024).toStringAsFixed(0)} KB';
+      }
+    } else if (source == 'Gallery') {
+      final picker = ImagePicker();
+      final xfile = await picker.pickImage(source: ImageSource.gallery);
+      if (xfile != null) {
+        picked = File(xfile.path);
+        final len = await picked.length();
+        sizeStr = '${(len / 1024).toStringAsFixed(0)} KB';
+      }
+    } else {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'jpg', 'png'],
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final f = result.files.first;
+        if (f.path != null) {
+          picked = File(f.path!);
+          final size = f.size;
+          sizeStr = size > 1024 * 1024
+              ? '${(size / (1024 * 1024)).toStringAsFixed(1)} MB'
+              : '${(size / 1024).toStringAsFixed(0)} KB';
+        }
+      }
+    }
+
+    if (picked != null) {
+      setState(() {
+        _selectedFile = picked;
+        _fileSizeStr = sizeStr;
+        if (_titleCtrl.text.isEmpty) {
+          _titleCtrl.text = picked!.path.split('/').last.split('\\').last;
+        }
+      });
+    }
+  }
+
+  Future<void> _saveDocument() async {
+    final title = _titleCtrl.text.trim();
+    if (title.isEmpty || _selectedFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please pick a file/scan and enter a document title.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final doc = DocumentModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: title,
+      category: _selectedCategory,
+      filePath: _selectedFile!.path,
+      fileSize: _fileSizeStr,
+      addedAt: DateTime.now(),
+    );
+
+    await widget.ref.read(documentsProvider.notifier).addDocument(doc);
+
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"$title" saved to Documents Hub'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade600,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+
+            const Text(
+              'Add to Documents Hub',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                fontFamily: 'Poppins',
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Scan or pick a document and provide a title to save it.',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontFamily: 'Poppins'),
+            ),
+            const SizedBox(height: 16),
+
+            // Source picker row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _SourceOption(
+                  icon: Icons.camera_alt_rounded,
+                  label: 'Camera',
+                  selected: _selectedSource == 'Camera',
+                  onTap: () => _pickSource('Camera'),
+                ),
+                _SourceOption(
+                  icon: Icons.photo_library_rounded,
+                  label: 'Gallery',
+                  selected: _selectedSource == 'Gallery',
+                  onTap: () => _pickSource('Gallery'),
+                ),
+                _SourceOption(
+                  icon: Icons.picture_as_pdf_rounded,
+                  label: 'PDF',
+                  selected: _selectedSource == 'PDF',
+                  onTap: () => _pickSource('PDF'),
+                ),
+                _SourceOption(
+                  icon: Icons.insert_drive_file_rounded,
+                  label: 'Documents',
+                  selected: _selectedSource == 'Documents',
+                  onTap: () => _pickSource('Documents'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Title Input
+            TextField(
+              controller: _titleCtrl,
+              style: const TextStyle(color: Colors.white, fontSize: 14, fontFamily: 'Poppins'),
+              decoration: InputDecoration(
+                labelText: 'Document Title',
+                hintText: 'e.g. Physics Lab Manual - Unit 1',
+                labelStyle: const TextStyle(color: AppColors.textSecondary, fontFamily: 'Poppins'),
+                hintStyle: TextStyle(color: Colors.grey.shade600, fontFamily: 'Poppins'),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Category Selector
+            DropdownButtonFormField<String>(
+              value: _selectedCategory,
+              dropdownColor: AppColors.surface,
+              style: const TextStyle(color: Colors.white, fontFamily: 'Poppins', fontSize: 14),
+              decoration: InputDecoration(
+                labelText: 'Category',
+                labelStyle: const TextStyle(color: AppColors.textSecondary, fontFamily: 'Poppins'),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+              items: _categories
+                  .where((c) => c.name != 'All')
+                  .map((c) => DropdownMenuItem(value: c.name, child: Text(c.name)))
+                  .toList(),
+              onChanged: (v) => setState(() => _selectedCategory = v!),
+            ),
+            const SizedBox(height: 20),
+
+            // Save Button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _saveDocument,
+                icon: const Icon(Icons.cloud_upload_rounded, color: Colors.white),
+                label: const Text(
+                  'Save Document',
+                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SourceOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _SourceOption({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AppColors.primary : Colors.grey.shade400;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: selected ? AppColors.primary.withValues(alpha: 0.2) : AppColors.background,
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
+              fontFamily: 'Poppins',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Documents Hub Screen ────────────────────────────────────────────────────
 
 class DocumentsHubScreen extends ConsumerStatefulWidget {
   const DocumentsHubScreen({super.key});
@@ -127,87 +420,6 @@ class _DocumentsHubScreenState extends ConsumerState<DocumentsHubScreen> {
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickAndAddDocument() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'txt'],
-      allowMultiple: false,
-    );
-    if (result == null || result.files.isEmpty) return;
-    final file = result.files.first;
-    final size = file.size;
-    final sizeStr = size > 1024 * 1024
-        ? '${(size / (1024 * 1024)).toStringAsFixed(1)} MB'
-        : '${(size / 1024).toStringAsFixed(0)} KB';
-
-    // Ask for category
-    final category = await _showCategoryPicker();
-    if (category == null) return;
-
-    final doc = DocumentModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: file.name,
-      category: category,
-      filePath: file.path ?? '',
-      fileSize: sizeStr,
-      addedAt: DateTime.now(),
-    );
-    await ref.read(documentsProvider.notifier).addDocument(doc);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${file.name} added to Documents Hub'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  Future<String?> _showCategoryPicker() async {
-    return showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Select Category',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Poppins',
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ..._categories.where((c) => c.name != 'All').map((c) => ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: c.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(c.icon, color: c.color, size: 20),
-              ),
-              title: Text(c.name, style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w500)),
-              onTap: () => Navigator.pop(ctx, c.name),
-            )),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
   }
 
   Future<void> _confirmDelete(DocumentModel doc) async {
@@ -249,7 +461,7 @@ class _DocumentsHubScreenState extends ConsumerState<DocumentsHubScreen> {
     return AppScaffold(
       showAppBar: false,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _pickAndAddDocument,
+        onPressed: () => showAddDocumentSheet(context, ref),
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: const Text('Add Document', style: TextStyle(color: Colors.white, fontFamily: 'Poppins', fontWeight: FontWeight.w600)),

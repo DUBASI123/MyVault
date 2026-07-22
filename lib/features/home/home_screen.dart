@@ -11,6 +11,7 @@ import '../auth/data/auth_repository.dart';
 import '../academic_hub/academic_hub_screen.dart';
 import '../results/results_screen.dart';
 import '../profile/profile_screen.dart';
+import '../documents_hub/documents_hub_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -21,13 +22,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
-
-  final List<_NavItem> _navItems = [
-    _NavItem(icon: Icons.home_rounded, label: 'Home', color: AppColors.primary),
-    _NavItem(icon: Icons.menu_book_rounded, label: 'Academics', color: AppColors.academicHub),
-    _NavItem(icon: Icons.bar_chart_rounded, label: 'Results', color: AppColors.results),
-    _NavItem(icon: Icons.person_rounded, label: 'Profile', color: AppColors.primary),
-  ];
 
   @override
   void initState() {
@@ -48,23 +42,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return AppScaffold(
       showAppBar: false,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (i) => setState(() => _selectedIndex = i),
-        items: _navItems
-            .map((n) => BottomNavigationBarItem(
-                  icon: Icon(n.icon),
-                  label: n.label,
-                  activeIcon: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: n.color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(n.icon, color: n.color),
-                  ),
-                ))
-            .toList(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => showAddDocumentSheet(context, ref),
+        backgroundColor: AppColors.primary,
+        elevation: 6,
+        shape: const CircleBorder(),
+        child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8,
+        color: AppColors.surface,
+        child: SizedBox(
+          height: 60,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.home_rounded,
+                  color: _selectedIndex == 0 ? AppColors.primary : AppColors.textSecondary,
+                  size: 28,
+                ),
+                onPressed: () => setState(() => _selectedIndex = 0),
+              ),
+              const SizedBox(width: 48), // Notch space for center floating + button
+              IconButton(
+                icon: const Icon(
+                  Icons.settings_rounded,
+                  color: AppColors.textSecondary,
+                  size: 28,
+                ),
+                onPressed: () => context.push(AppRoutes.settings),
+              ),
+            ],
+          ),
+        ),
       ),
       body: IndexedStack(
         index: _selectedIndex,
@@ -79,21 +93,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-class _NavItem {
-  final IconData icon;
-  final String label;
-  final Color color;
-  _NavItem({required this.icon, required this.label, required this.color});
-}
-
-
 // ─── Live Stats Provider ────────────────────────────────────────────────────────
 final _homeStatsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final uid = Supabase.instance.client.auth.currentUser?.id;
   if (uid == null) return {};
   final Map<String, dynamic> stats = {};
 
-  // Certificates earned
   try {
     final certs = await Supabase.instance.client
         .from('certificates').select('id').eq('student_id', uid);
@@ -102,26 +107,25 @@ final _homeStatsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref
     stats['certs'] = (certs as List).length + (courseCerts as List).length;
   } catch (_) { stats['certs'] = 0; }
 
-  // Exam results → compute CGPA
   try {
     final results = await Supabase.instance.client
         .from('exam_results').select('grade, credits').eq('student_id', uid);
     const gradeMap = {'O':10,'A+':9,'S':9,'A':8,'B+':7,'B':6,'C':5,'D':4,'E':4,'F':0,'Ab':0};
     double totalPoints = 0; int totalCredits = 0;
-    for (final r in results as List) {
-      final g = gradeMap[r['grade'] ?? 'B'] ?? 7;
-      final cr = (r['credits'] as num?)?.toInt() ?? 3;
-      totalPoints += g * cr; totalCredits += cr;
+    for (final r in (results as List)) {
+      final grade = (r['grade'] as String? ?? 'F').trim();
+      final cr = (r['credits'] as num? ?? 3).toInt();
+      final pts = gradeMap[grade] ?? 0;
+      totalPoints += pts * cr;
+      totalCredits += cr;
     }
     stats['cgpa'] = totalCredits > 0 ? (totalPoints / totalCredits) : 0.0;
   } catch (_) { stats['cgpa'] = 0.0; }
 
-  // Courses in progress
   try {
-    final prog = await Supabase.instance.client
-        .from('student_course_progress')
-        .select('id').eq('student_id', uid).eq('is_completed', false);
-    stats['inProgress'] = (prog as List).length;
+    final apps = await Supabase.instance.client
+        .from('internship_applications').select('id').eq('student_id', uid).eq('status', 'Submitted');
+    stats['inProgress'] = (apps as List).length;
   } catch (_) { stats['inProgress'] = 0; }
 
   return stats;
@@ -138,10 +142,10 @@ class _HomeTab extends ConsumerWidget {
     final name = student?.firstName ?? 'Student';
     final statsAsync = ref.watch(_homeStatsProvider);
 
+    // Removed Documents Hub from Quick Access grid as requested
     final modules = [
       _Module('Academic Hub', Icons.menu_book_rounded, AppColors.academicHub, AppRoutes.academicHub),
       _Module('My Results', Icons.bar_chart_rounded, AppColors.results, AppRoutes.results),
-      _Module('Documents Hub', Icons.folder_rounded, AppColors.certificates, AppRoutes.documentsHub),
       _Module('Internships', Icons.work_rounded, AppColors.internships, AppRoutes.internships),
       _Module('Placement Desk', Icons.business_center_rounded, AppColors.results, AppRoutes.placementDesk),
       _Module('Govt Jobs', Icons.account_balance_rounded, const Color(0xFF10B981), AppRoutes.govtJobs),
@@ -188,7 +192,6 @@ class _HomeTab extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  // Settings icon
                   IconButton(
                     onPressed: () => context.push(AppRoutes.settings),
                     icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary),
@@ -217,7 +220,7 @@ class _HomeTab extends ConsumerWidget {
               ).animate().fadeIn(duration: 400.ms),
             ),
 
-            // ── Live notification ticker ──────────────────────────────────
+            // Live notification ticker
             const LiveNotificationTicker(),
 
             // Info card
@@ -229,7 +232,7 @@ class _HomeTab extends ConsumerWidget {
 
             const SizedBox(height: 12),
 
-            // ── Live Stats Strip ──────────────────────────────────────────
+            // Live Stats Strip
             statsAsync.when(
               loading: () => const SizedBox.shrink(),
               error: (_, __) => const SizedBox.shrink(),
@@ -359,7 +362,6 @@ class _StatTile extends StatelessWidget {
     );
   }
 }
-
 
 class _InfoCard extends StatelessWidget {
   final dynamic student;
