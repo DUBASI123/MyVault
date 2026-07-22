@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/env.dart';
 import 'core/services/crash_reporting_service.dart';
+import 'core/services/offline_sync_service.dart';
 import 'app.dart';
 
 void main() async {
@@ -15,6 +16,7 @@ void main() async {
     anonKey: Env.supabaseAnonKey,
   );
 
+  await OfflineSyncService.instance.init();
   await CrashReportingService.instance.init();
 
   runZonedGuarded(() {
