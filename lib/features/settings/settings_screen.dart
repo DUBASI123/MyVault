@@ -179,6 +179,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _infoTile(Icons.business_rounded, AppColors.info, 'Organization', student?.collegeName ?? 'MyVault'),
                     _infoTile(Icons.badge_rounded, AppColors.academicHub, 'Student ID', student?.hallTicket ?? '—'),
                     _navTile(
+                      icon: Icons.memory_rounded,
+                      color: AppColors.primary,
+                      title: 'Tech Stack & Architecture',
+                      subtitle: 'Frontend, Backend, Database & APIs',
+                      onTap: () => context.push(AppRoutes.techStack),
+                    ),
+                    _navTile(
                       icon: Icons.privacy_tip_outlined,
                       color: AppColors.textSecondary,
                       title: 'Privacy Policy',
