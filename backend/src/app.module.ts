@@ -8,6 +8,10 @@ import { ContentModule } from './content/content.module';
 import { MasterModule } from './master/master.module';
 import { StorageModule } from './storage/storage.module';
 import { NotificationModule } from './notifications/notification.module';
+import { PaymentsModule } from './payments/payments.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { EmailService } from './services/email.service';
+import { SmsService } from './services/sms.service';
 
 @Module({
   imports: [
@@ -20,6 +24,10 @@ import { NotificationModule } from './notifications/notification.module';
     MasterModule,
     StorageModule,
     NotificationModule,
+    PaymentsModule,
+    AnalyticsModule,
   ],
+  providers: [EmailService, SmsService],
+  exports: [EmailService, SmsService],
 })
 export class AppModule {}
