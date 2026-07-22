@@ -60,6 +60,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               IconButton(
+                tooltip: 'Home',
                 icon: Icon(
                   Icons.home_rounded,
                   color: _selectedIndex == 0 ? AppColors.primary : AppColors.textSecondary,
@@ -69,12 +70,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(width: 48), // Notch space for center floating + button
               IconButton(
+                tooltip: 'Resume Builder',
                 icon: const Icon(
-                  Icons.settings_rounded,
+                  Icons.description_rounded,
                   color: AppColors.textSecondary,
-                  size: 28,
+                  size: 26,
                 ),
-                onPressed: () => context.push(AppRoutes.settings),
+                onPressed: () => context.push(AppRoutes.resumeBuilder),
               ),
             ],
           ),
@@ -142,7 +144,7 @@ class _HomeTab extends ConsumerWidget {
     final name = student?.firstName ?? 'Student';
     final statsAsync = ref.watch(_homeStatsProvider);
 
-    // Removed Documents Hub from Quick Access grid as requested
+    // Removed Notifications and Resume Builder blocks from grid
     final modules = [
       _Module('Academic Hub', Icons.menu_book_rounded, AppColors.academicHub, AppRoutes.academicHub),
       _Module('My Results', Icons.bar_chart_rounded, AppColors.results, AppRoutes.results),
@@ -152,9 +154,7 @@ class _HomeTab extends ConsumerWidget {
       _Module('Projects', Icons.code_rounded, AppColors.projects, AppRoutes.projects),
       _Module('Study Planner', Icons.calendar_month_rounded, const Color(0xFF6366F1), AppRoutes.studyPlanner),
       _Module('Competitive Exams', Icons.emoji_events_rounded, AppColors.compExams, AppRoutes.competitiveExams),
-      _Module('Notifications', Icons.notifications_rounded, AppColors.notifications, AppRoutes.notifications),
       _Module('Certificates', Icons.workspace_premium_rounded, AppColors.warning, AppRoutes.certificates),
-      _Module('Resume Builder', Icons.description_rounded, const Color(0xFFEC4899), AppRoutes.resumeBuilder),
     ];
 
     return SafeArea(
@@ -162,7 +162,7 @@ class _HomeTab extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Header with Notification Bell beside Profile Avatar
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
@@ -192,10 +192,16 @@ class _HomeTab extends ConsumerWidget {
                       ],
                     ),
                   ),
+                  // Notification bell icon placed right beside profile picture at top header
+                  IconButton(
+                    onPressed: () => context.push(AppRoutes.notifications),
+                    icon: const Icon(Icons.notifications_outlined, color: AppColors.textSecondary, size: 24),
+                  ),
                   IconButton(
                     onPressed: () => context.push(AppRoutes.settings),
-                    icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary),
+                    icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 24),
                   ),
+                  const SizedBox(width: 4),
                   GestureDetector(
                     onTap: () => context.push(AppRoutes.profile),
                     child: CircleAvatar(
