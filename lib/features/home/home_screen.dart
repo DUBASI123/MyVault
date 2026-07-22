@@ -150,6 +150,7 @@ class _HomeTab extends ConsumerWidget {
       _Module('Competitive Exams', Icons.emoji_events_rounded, AppColors.compExams, AppRoutes.competitiveExams),
       _Module('Notifications', Icons.notifications_rounded, AppColors.notifications, AppRoutes.notifications),
       _Module('Certificates', Icons.workspace_premium_rounded, AppColors.warning, AppRoutes.certificates),
+      _Module('Resume Builder', Icons.description_rounded, const Color(0xFFEC4899), AppRoutes.resumeBuilder),
     ];
 
     return SafeArea(

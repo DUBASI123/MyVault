@@ -27,6 +27,7 @@ import '../../features/documents_hub/documents_hub_screen.dart';
 import '../../features/internships/screens/placement_desk_screen.dart';
 import '../../features/study_planner/study_planner_screen.dart';
 import '../../features/govt_jobs/govt_jobs_screen.dart';
+import '../../features/resume_builder/screens/resume_builder_screen.dart';
 
 class AppRoutes {
   static const splash = '/';
@@ -54,6 +55,7 @@ class AppRoutes {
   static const placementDesk = '/placement-desk';
   static const studyPlanner = '/study-planner';
   static const govtJobs = '/govt-jobs';
+  static const resumeBuilder = '/resume-builder';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -147,6 +149,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.placementDesk, builder: (context, state) => const PlacementDeskScreen()),
       GoRoute(path: AppRoutes.studyPlanner,  builder: (context, state) => const StudyPlannerScreen()),
       GoRoute(path: AppRoutes.govtJobs, builder: (context, state) => const GovtJobsScreen()),
+      GoRoute(path: AppRoutes.resumeBuilder, builder: (context, state) => const ResumeBuilderScreen()),
     ],
     errorBuilder: (_, state) => Scaffold(
       body: Center(child: Text('Page not found: ${state.error}')),
