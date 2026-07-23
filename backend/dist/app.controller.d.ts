@@ -1,6 +1,9 @@
 import { Response } from 'express';
+import { StorageService } from './storage/storage.service';
 export declare class AppController {
-    downloadApk(res: Response): void;
+    private readonly storageService;
+    constructor(storageService: StorageService);
+    downloadApk(res: Response): Promise<void>;
     getRoot(): {
         status: string;
         app: string;

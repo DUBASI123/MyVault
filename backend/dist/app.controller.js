@@ -15,9 +15,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
+const storage_service_1 = require("./storage/storage.service");
 let AppController = class AppController {
-    downloadApk(res) {
-        return res.redirect('https://myvault-files.s3.eu-north-1.amazonaws.com/downloads/MyVault-release.apk');
+    constructor(storageService) {
+        this.storageService = storageService;
+    }
+    async downloadApk(res) {
+        try {
+            const signedUrl = await this.storageService.getPresignedDownloadUrl('downloads/MyVault-release.apk', 'MyVault-release.apk');
+            return res.redirect(signedUrl);
+        }
+        catch (err) {
+            return res.redirect('https://myvault-files.s3.eu-north-1.amazonaws.com/downloads/MyVault-release.apk');
+        }
     }
     getRoot() {
         return {
@@ -36,7 +46,7 @@ __decorate([
     __param(0, (0, common_1.Res)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], AppController.prototype, "downloadApk", null);
 __decorate([
     (0, common_1.Get)(),
@@ -47,6 +57,7 @@ __decorate([
 ], AppController.prototype, "getRoot", null);
 exports.AppController = AppController = __decorate([
     (0, swagger_1.ApiTags)('System'),
-    (0, common_1.Controller)()
+    (0, common_1.Controller)(),
+    __metadata("design:paramtypes", [storage_service_1.StorageService])
 ], AppController);
 //# sourceMappingURL=app.controller.js.map
