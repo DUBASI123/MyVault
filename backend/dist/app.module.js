@@ -21,7 +21,6 @@ const notification_module_1 = require("./notifications/notification.module");
 const payments_module_1 = require("./payments/payments.module");
 const analytics_module_1 = require("./analytics/analytics.module");
 const email_service_1 = require("./services/email.service");
-const sms_service_1 = require("./services/sms.service");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -41,8 +40,8 @@ exports.AppModule = AppModule = __decorate([
             analytics_module_1.AnalyticsModule,
         ],
         controllers: [app_controller_1.AppController],
-        providers: [email_service_1.EmailService, sms_service_1.SmsService],
-        exports: [email_service_1.EmailService, sms_service_1.SmsService],
+        providers: [email_service_1.EmailService],
+        exports: [email_service_1.EmailService],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

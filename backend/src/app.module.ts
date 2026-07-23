@@ -12,7 +12,6 @@ import { NotificationModule } from './notifications/notification.module';
 import { PaymentsModule } from './payments/payments.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { EmailService } from './services/email.service';
-import { SmsService } from './services/sms.service';
 
 @Module({
   imports: [
@@ -29,7 +28,7 @@ import { SmsService } from './services/sms.service';
     AnalyticsModule,
   ],
   controllers: [AppController],
-  providers: [EmailService, SmsService],
-  exports: [EmailService, SmsService],
+  providers: [EmailService],
+  exports: [EmailService],
 })
 export class AppModule {}
