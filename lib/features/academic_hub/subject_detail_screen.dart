@@ -40,21 +40,42 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
           .eq('id', widget.subjectId)
           .maybeSingle();
 
-      var query = Supabase.instance.client
-          .from('academic_contents')
-          .select()
-          .eq('subject_id', widget.subjectId);
+      var list = <Map<String, dynamic>>[];
 
-      if (widget.dbTypes.isNotEmpty) {
-        query = query.inFilter('content_type', widget.dbTypes);
+      try {
+        var query = Supabase.instance.client
+            .from('academic_contents')
+            .select()
+            .eq('subject_id', widget.subjectId);
+
+        if (widget.dbTypes.isNotEmpty) {
+          query = query.inFilter('content_type', widget.dbTypes);
+        }
+
+        final res = await query.order('unit_number');
+        list = List<Map<String, dynamic>>.from(res);
+      } catch (_) {}
+
+      // If academic_contents is empty, fetch directly from cms_study_materials uploaded via CMS website
+      if (list.isEmpty) {
+        try {
+          final cmsData = await Supabase.instance.client
+              .from('cms_study_materials')
+              .select()
+              .eq('active', true)
+              .order('created_at', ascending: false);
+
+          final cmsList = (cmsData as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          if (cmsList.isNotEmpty) {
+            list = cmsList;
+          }
+        } catch (_) {}
       }
-
-      final res = await query.order('unit_number');
 
       if (mounted) {
         setState(() {
           _subject = sub;
-          _resources = List<Map<String, dynamic>>.from(res);
+          _resources = list;
           _loading = false;
         });
       }
