@@ -1,5 +1,6 @@
-import { Controller, Get, Param, Query, Res } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Res, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { StorageService } from './storage.service';
 
@@ -27,5 +28,26 @@ export class StorageController {
   async redirectUrl(@Param('0') path: string, @Res() res: Response) {
     const url = await this.storageService.getPresignedViewUrl(path);
     return res.redirect(url);
+  }
+
+  @Get('presigned-upload')
+  @ApiOperation({ summary: 'Get pre-signed S3 upload URL for CMS Website uploads' })
+  async getPresignedUploadUrl(
+    @Query('fileName') fileName: string,
+    @Query('contentType') contentType: string,
+  ) {
+    const key = `cms-uploads/${Date.now()}_${fileName || 'document.pdf'}`;
+    const result = await this.storageService.getPresignedUploadUrl(key, contentType || 'application/pdf');
+    return result;
+  }
+
+  @Post('upload')
+  @ApiOperation({ summary: 'Direct file upload to AWS S3 bucket' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadFile(@UploadedFile() file: { originalname: string; mimetype: string; buffer: Buffer }) {
+    if (!file) throw new Error('File required');
+    const key = `cms-uploads/${Date.now()}_${file.originalname}`;
+    const fileUrl = await this.storageService.uploadDirectBuffer(file.buffer, key, file.mimetype);
+    return { fileUrl };
   }
 }

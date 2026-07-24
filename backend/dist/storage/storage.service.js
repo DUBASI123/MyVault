@@ -44,6 +44,28 @@ let StorageService = class StorageService {
         });
         return (0, s3_request_presigner_1.getSignedUrl)(this.s3Client, command, { expiresIn: 3600 });
     }
+    async getPresignedUploadUrl(key, contentType) {
+        if (!key)
+            throw new common_1.BadRequestException('Key required');
+        const command = new client_s3_1.PutObjectCommand({
+            Bucket: this.bucketName,
+            Key: key,
+            ContentType: contentType,
+        });
+        const uploadUrl = await (0, s3_request_presigner_1.getSignedUrl)(this.s3Client, command, { expiresIn: 3600 });
+        const fileUrl = `https://${this.bucketName}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${key}`;
+        return { uploadUrl, fileUrl };
+    }
+    async uploadDirectBuffer(buffer, key, contentType) {
+        const command = new client_s3_1.PutObjectCommand({
+            Bucket: this.bucketName,
+            Key: key,
+            Body: buffer,
+            ContentType: contentType,
+        });
+        await this.s3Client.send(command);
+        return `https://${this.bucketName}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${key}`;
+    }
 };
 exports.StorageService = StorageService;
 exports.StorageService = StorageService = __decorate([

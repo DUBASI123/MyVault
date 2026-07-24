@@ -10,4 +10,15 @@ export declare class StorageController {
         url: string;
     }>;
     redirectUrl(path: string, res: Response): Promise<void>;
+    getPresignedUploadUrl(fileName: string, contentType: string): Promise<{
+        uploadUrl: string;
+        fileUrl: string;
+    }>;
+    uploadFile(file: {
+        originalname: string;
+        mimetype: string;
+        buffer: Buffer;
+    }): Promise<{
+        fileUrl: string;
+    }>;
 }

@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
@@ -35,5 +35,28 @@ export class StorageService {
       ResponseContentDisposition: 'inline',
     });
     return getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
+  }
+
+  async getPresignedUploadUrl(key: string, contentType: string): Promise<{ uploadUrl: string; fileUrl: string }> {
+    if (!key) throw new BadRequestException('Key required');
+    const command = new PutObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      ContentType: contentType,
+    });
+    const uploadUrl = await getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
+    const fileUrl = `https://${this.bucketName}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${key}`;
+    return { uploadUrl, fileUrl };
+  }
+
+  async uploadDirectBuffer(buffer: Buffer, key: string, contentType: string): Promise<string> {
+    const command = new PutObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    });
+    await this.s3Client.send(command);
+    return `https://${this.bucketName}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${key}`;
   }
 }

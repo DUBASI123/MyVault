@@ -4,6 +4,7 @@ export declare class AcademicController {
     constructor(academicService: AcademicService);
     getSubjects(branch: string, semester: number, subjectType?: string): Promise<any>;
     getContents(subjectId: string, contentType?: string): Promise<{
+        fileUrl: string | null;
         description: string | null;
         title: string;
         id: string;
@@ -11,7 +12,6 @@ export declare class AcademicController {
         subjectId: string;
         contentType: string;
         unitNumber: number | null;
-        fileUrl: string | null;
         storagePath: string | null;
         uploadedBy: string | null;
     }[]>;
