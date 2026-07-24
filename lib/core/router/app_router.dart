@@ -28,6 +28,7 @@ import '../../features/internships/screens/placement_desk_screen.dart';
 import '../../features/study_planner/study_planner_screen.dart';
 import '../../features/govt_jobs/govt_jobs_screen.dart';
 import '../../features/resume_builder/screens/resume_builder_screen.dart';
+import '../../features/documents_hub/uploaded_files_screen.dart';
 
 class AppRoutes {
   static const splash = '/';
@@ -52,6 +53,7 @@ class AppRoutes {
   static const profile = '/profile';
   static const settings = '/settings';
   static const documentsHub = '/documents-hub';
+  static const uploadedFiles = '/uploaded-files';
   static const placementDesk = '/placement-desk';
   static const studyPlanner = '/study-planner';
   static const govtJobs = '/govt-jobs';
@@ -146,6 +148,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.profile, builder: (context, state) => const ProfileScreen()),
       GoRoute(path: AppRoutes.settings, builder: (context, state) => const SettingsScreen()),
       GoRoute(path: AppRoutes.documentsHub, builder: (context, state) => const DocumentsHubScreen()),
+      GoRoute(path: AppRoutes.uploadedFiles, builder: (context, state) => const UploadedFilesScreen()),
       GoRoute(path: AppRoutes.placementDesk, builder: (context, state) => const PlacementDeskScreen()),
       GoRoute(path: AppRoutes.studyPlanner,  builder: (context, state) => const StudyPlannerScreen()),
       GoRoute(path: AppRoutes.govtJobs, builder: (context, state) => const GovtJobsScreen()),

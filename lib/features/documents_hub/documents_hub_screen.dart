@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:open_filex/open_filex.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/router/app_router.dart';
 import '../../shared/widgets/app_scaffold.dart';
 
 // ─── Document Model ──────────────────────────────────────────────────────────
@@ -501,6 +502,11 @@ class _DocumentsHubScreenState extends ConsumerState<DocumentsHubScreen> {
                           fontFamily: 'Poppins',
                         ),
                       ),
+                    ),
+                    IconButton(
+                      onPressed: () => context.push(AppRoutes.uploadedFiles),
+                      icon: const Icon(Icons.cloud_queue_rounded, color: Colors.white),
+                      tooltip: 'Supabase Uploaded Files',
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

@@ -7,14 +7,29 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 final examStaticContentProvider = FutureProvider.family<
     List<Map<String, dynamic>>, ({String examId, String contentType})>(
   (ref, args) async {
-    final res = await Supabase.instance.client
-        .from('exam_content')
-        .select()
-        .eq('exam_id', args.examId)
-        .eq('content_type', args.contentType)
-        .eq('is_active', true)
-        .order('created_at');
-    return List<Map<String, dynamic>>.from(res as List);
+    try {
+      final res = await Supabase.instance.client
+          .from('exam_content')
+          .select()
+          .eq('exam_id', args.examId)
+          .eq('content_type', args.contentType)
+          .eq('is_active', true)
+          .order('created_at');
+      final list = List<Map<String, dynamic>>.from(res as List);
+      if (list.isNotEmpty) return list;
+    } catch (_) {}
+
+    try {
+      final cmsRes = await Supabase.instance.client
+          .from('cms_study_materials')
+          .select()
+          .eq('active', true)
+          .order('created_at', ascending: false);
+      final cmsList = (cmsRes as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      if (cmsList.isNotEmpty) return cmsList;
+    } catch (_) {}
+
+    return [];
   },
 );
 

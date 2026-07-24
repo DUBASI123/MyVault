@@ -38,30 +38,7 @@ class AcademicService {
       debugPrint('Supabase getSubjects error: $e');
     }
 
-    // Try cms_study_materials if subjects query is empty
-    if (subjects.isEmpty) {
-      try {
-        final cmsRes = await SupabaseService.client
-            .from('cms_study_materials')
-            .select()
-            .eq('active', true);
-        final cmsList = (cmsRes as List)
-            .map((e) => SubjectModel.fromMap({
-                  'id': e['id'],
-                  'name': e['name'] ?? e['title'],
-                  'code': e['code'] ?? 'SUB101',
-                  'branch': e['branch'] ?? branch,
-                  'semester': e['semester'] is int ? e['semester'] : semester,
-                  'subject_type': e['subject_type'] ?? subjectType,
-                }))
-            .toList();
-        if (cmsList.isNotEmpty) {
-          subjects = cmsList;
-        }
-      } catch (_) {}
-    }
-
-    // GUARANTEED FALLBACK LIST: Never show empty screens to students
+    // GUARANTEED NATIVE FALLBACK LIST if database query returns empty
     if (subjects.isEmpty) {
       subjects = _getFallbackSubjects(branch: branch, semester: semester, subjectType: subjectType);
     }

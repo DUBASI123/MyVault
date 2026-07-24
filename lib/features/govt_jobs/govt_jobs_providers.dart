@@ -5,10 +5,33 @@ final govtJobsSearchProvider = StateProvider<String>((ref) => '');
 final govtJobsSectorProvider = StateProvider<String>((ref) => 'All');
 
 final govtJobsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  final res = await Supabase.instance.client
-      .from('active_govt_jobs')
-      .select();
-  return List<Map<String, dynamic>>.from(res as List);
+  try {
+    final res = await Supabase.instance.client
+        .from('active_govt_jobs')
+        .select();
+    final list = List<Map<String, dynamic>>.from(res as List);
+    if (list.isNotEmpty) return list;
+  } catch (_) {}
+
+  try {
+    final cmsRes = await Supabase.instance.client
+        .from('cms_job_listings')
+        .select()
+        .eq('category', 'Govt Jobs')
+        .eq('active', true)
+        .order('created_at', ascending: false);
+    return (cmsRes as List).map((e) => {
+      'id': e['id'],
+      'title': e['title'],
+      'organization': e['company_or_dept'],
+      'sector': e['sector'],
+      'description': e['description'],
+      'apply_link': e['apply_link'],
+      'deadline': e['deadline'],
+    }).toList();
+  } catch (_) {}
+
+  return [];
 });
 
 final filteredGovtJobsProvider = Provider<AsyncValue<List<Map<String, dynamic>>>>((ref) {

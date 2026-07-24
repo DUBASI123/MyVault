@@ -193,17 +193,50 @@ class InternshipRepository {
   Future<List<InternshipOpportunity>> fetchOpportunities({
     OpportunityType? type,
   }) async {
-    var query = _client
-        .from('internship_opportunities')
-        .select()
-        .eq('is_approved', true)
-        .gte('deadline', DateTime.now().toIso8601String());
+    List<InternshipOpportunity> list = [];
+    try {
+      var query = _client
+          .from('internship_opportunities')
+          .select()
+          .eq('is_approved', true);
 
-    if (type != null) {
-      query = query.eq('type', type.name);
+      if (type != null) {
+        query = query.eq('type', type.name);
+      }
+
+      final data = await query.order('posted_at', ascending: false);
+      list = (data as List).map((j) => InternshipOpportunity.fromJson(j)).toList();
+    } catch (_) {}
+
+    if (list.isEmpty) {
+      try {
+        final cmsRes = await _client
+            .from('cms_job_listings')
+            .select()
+            .eq('category', 'Placement Desk')
+            .eq('active', true)
+            .order('created_at', ascending: false);
+
+        list = (cmsRes as List).map<InternshipOpportunity>((j) => InternshipOpportunity(
+          id: j['id'] as String,
+          companyName: j['company_or_dept'] as String? ?? 'Placement Desk',
+          companyLogoUrl: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=100',
+          role: j['title'] as String? ?? '',
+          description: j['description'] as String? ?? '',
+          type: OpportunityType.job,
+          location: 'Hyderabad, TS / Remote',
+          isRemote: true,
+          duration: 'Full Time',
+          stipend: j['sector'] as String? ?? 'Competitive Package',
+          requiredSkills: const ['Problem Solving', 'Technical Skills'],
+          postedAt: DateTime.parse(j['created_at'] as String),
+          deadline: j['deadline'] != null ? DateTime.parse(j['deadline'] as String) : DateTime.now().add(const Duration(days: 30)),
+          applyUrl: j['apply_link'] as String? ?? '',
+          isApproved: true,
+        )).toList();
+      } catch (_) {}
     }
 
-    final data = await query.order('posted_at', ascending: false);
-    return (data as List).map((j) => InternshipOpportunity.fromJson(j)).toList();
+    return list;
   }
 }

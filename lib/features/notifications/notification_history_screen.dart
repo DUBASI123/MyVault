@@ -17,28 +17,53 @@ class _NotificationHistoryScreenState
   late final _studentId = _client.auth.currentUser?.id;
 
   Future<List<Map<String, dynamic>>> _fetchNotifications() async {
-    if (_studentId == null) return [];
+    List<Map<String, dynamic>> result = [];
+    if (_studentId != null) {
+      try {
+        final rows = await _client
+            .from('notifications')
+            .select()
+            .or('student_id.eq.$_studentId,is_broadcast.eq.true')
+            .order('sent_at', ascending: false)
+            .limit(100);
 
-    final rows = await _client
-        .from('notifications')
-        .select()
-        .or('student_id.eq.$_studentId,is_broadcast.eq.true')
-        .order('sent_at', ascending: false)
-        .limit(100);
+        final reads = await _client
+            .from('notification_reads')
+            .select('notification_id')
+            .eq('student_id', _studentId!);
 
-    final reads = await _client
-        .from('notification_reads')
-        .select('notification_id')
-        .eq('student_id', _studentId!);
+        final readIds =
+            (reads as List).map((r) => r['notification_id'] as String).toSet();
 
-    final readIds =
-        (reads as List).map((r) => r['notification_id'] as String).toSet();
+        result = (rows as List).map((n) {
+          final map = Map<String, dynamic>.from(n as Map);
+          map['is_read'] = readIds.contains(map['id']);
+          return map;
+        }).toList();
+      } catch (_) {}
+    }
 
-    return (rows as List).map((n) {
-      final map = Map<String, dynamic>.from(n as Map);
-      map['is_read'] = readIds.contains(map['id']);
-      return map;
-    }).toList();
+    if (result.isEmpty) {
+      try {
+        final cmsRows = await _client
+            .from('cms_notices')
+            .select()
+            .eq('active', true)
+            .order('created_at', ascending: false)
+            .limit(100);
+
+        result = (cmsRows as List).map((n) => {
+          'id': n['id'],
+          'title': n['title'],
+          'body': n['description'] ?? '',
+          'sent_at': n['created_at'],
+          'is_read': false,
+          'file_url': n['file_url'] ?? n['link'],
+        }).toList();
+      } catch (_) {}
+    }
+
+    return result;
   }
 
   Future<void> _markRead(String notificationId) async {
