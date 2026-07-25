@@ -38,6 +38,39 @@ class AcademicService {
       debugPrint('Supabase getSubjects error: $e');
     }
 
+    // Fetch custom subjects & materials uploaded from CMS website (cms_study_materials & uploaded_files)
+    try {
+      final cmsRes = await SupabaseService.client
+          .from('cms_study_materials')
+          .select()
+          .eq('active', true)
+          .order('created_at', ascending: false);
+
+      final cmsList = (cmsRes as List).map((e) {
+        final name = (e['name'] as String? ?? e['title'] as String? ?? e['subject_name'] as String? ?? 'Custom Subject').trim();
+        return SubjectModel(
+          id: e['id']?.toString() ?? 'cms_${DateTime.now().millisecondsSinceEpoch}',
+          name: name,
+          code: (e['section_tab'] as String? ?? 'NOTES').toUpperCase(),
+          branch: branch,
+          semester: semester,
+          subjectType: subjectType,
+        );
+      }).toList();
+
+      if (cmsList.isNotEmpty) {
+        final existingNames = subjects.map((s) => s.name.toLowerCase()).toSet();
+        for (final cmsSub in cmsList) {
+          if (!existingNames.contains(cmsSub.name.toLowerCase())) {
+            subjects.insert(0, cmsSub); // Display website-uploaded subject at top!
+            existingNames.add(cmsSub.name.toLowerCase());
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('cms_study_materials query error: $e');
+    }
+
     // GUARANTEED NATIVE FALLBACK LIST if database query returns empty
     if (subjects.isEmpty) {
       subjects = _getFallbackSubjects(branch: branch, semester: semester, subjectType: subjectType);

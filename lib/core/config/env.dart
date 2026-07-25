@@ -1,7 +1,6 @@
 class Env {
-  // Replace with real values from Supabase → Settings → API
-  static const supabaseUrl     = 'https://oawomrlsitttrbulxgyk.supabase.co';
-  static const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hd29tcmxzaXR0dHJidWx4Z3lrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NDk3NzQsImV4cCI6MjA5NzQyNTc3NH0.j3rs7JlIZiRXxsw67GVLbQsKGpOUP_758PuIbGnYzig';
+  static const supabaseUrl     = 'https://aiibdtupsnolywusdrjg.supabase.co';
+  static const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpaWJkdHVwc25vbHl3dXNkcmpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MTkyMTMsImV4cCI6MjEwMDM5NTIxM30.B3-K-vlKqq4TQyLE8PkP7LWghkCjQUFWDeNEOEWM5pY';
 
   // Cloudinary — from Cloudinary Dashboard
   static const cloudinaryCloudName    = 'dtdb4irno';

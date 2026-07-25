@@ -59,6 +59,33 @@ class _SubjectDetailScreenState extends ConsumerState<SubjectDetailScreen> {
         list = List<Map<String, dynamic>>.from(res);
       } catch (_) {}
 
+      // Fetch files uploaded via CMS website (cms_study_materials & uploaded_files)
+      try {
+        final cmsRes = await Supabase.instance.client
+            .from('cms_study_materials')
+            .select()
+            .eq('active', true)
+            .order('created_at', ascending: false);
+
+        final cmsList = (cmsRes as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        if (cmsList.isNotEmpty) {
+          list.addAll(cmsList);
+        }
+      } catch (_) {}
+
+      try {
+        final ufRes = await Supabase.instance.client
+            .from('uploaded_files')
+            .select()
+            .eq('active', true)
+            .order('created_at', ascending: false);
+
+        final ufList = (ufRes as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        if (ufList.isNotEmpty) {
+          list.addAll(ufList);
+        }
+      } catch (_) {}
+
       if (mounted) {
         setState(() {
           _subject = sub;
