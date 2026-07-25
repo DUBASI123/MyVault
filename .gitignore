@@ -45,9 +45,7 @@ app.*.map.json
 /android/app/release
 
 # Exclude backend release APK from git push
-backend/public/MyVault-release.apk
 backend/public/MyVault-debug.apk
-*.apk
 
 # Upload / deploy helper scripts (contain no secrets, but keep repo clean)
 upload-apk-to-s3.mjs

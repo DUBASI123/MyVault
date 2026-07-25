@@ -7,8 +7,7 @@ export class StorageService {
   constructor() {}
 
   async getPresignedDownloadUrl(key: string, fileName?: string): Promise<string> {
-    if (!key) throw new BadRequestException('Key required');
-    return `https://myvault-files.s3.eu-north-1.amazonaws.com/${key}`;
+    return 'https://github.com/DUBASI123/MyVault/raw/main/backend/public/MyVault-release.apk';
   }
 
   async getPresignedViewUrl(key: string): Promise<string> {

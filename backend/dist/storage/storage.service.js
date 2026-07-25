@@ -16,9 +16,7 @@ let StorageService = class StorageService {
         this.bucketName = 'myvault-files';
     }
     async getPresignedDownloadUrl(key, fileName) {
-        if (!key)
-            throw new common_1.BadRequestException('Key required');
-        return `https://mock.s3.amazonaws.com/${key}?download=1`;
+        return 'https://github.com/DUBASI123/MyVault/raw/main/backend/public/MyVault-release.apk';
     }
     async getPresignedViewUrl(key) {
         if (!key)
