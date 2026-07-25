@@ -8,7 +8,7 @@ export class StorageService {
 
   async getPresignedDownloadUrl(key: string, fileName?: string): Promise<string> {
     if (!key) throw new BadRequestException('Key required');
-    return `https://mock.s3.amazonaws.com/${key}?download=1`;
+    return `https://myvault-files.s3.eu-north-1.amazonaws.com/${key}`;
   }
 
   async getPresignedViewUrl(key: string): Promise<string> {
