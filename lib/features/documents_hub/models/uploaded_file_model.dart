@@ -22,17 +22,17 @@ class UploadedFileModel {
   });
 
   factory UploadedFileModel.fromMap(Map<String, dynamic> map) {
+    final fileNameStr = map['file_name'] as String? ?? 'file';
+    final extension = fileNameStr.contains('.') ? fileNameStr.split('.').last.toLowerCase() : 'file';
     return UploadedFileModel(
       id: map['id'] as String,
-      title: map['title'] as String? ?? 'Untitled File',
-      fileName: map['file_name'] as String? ?? 'file',
-      storagePath: map['storage_path'] as String? ?? '',
-      publicUrl: map['public_url'] as String? ?? '',
-      fileType: (map['file_type'] as String? ?? 'file').toLowerCase(),
-      fileSize: map['file_size'] is int
-          ? map['file_size'] as int
-          : int.tryParse(map['file_size']?.toString() ?? '0') ?? 0,
-      uploadedBy: map['uploaded_by'] as String?,
+      title: fileNameStr.contains('.') ? fileNameStr.split('.').first : fileNameStr,
+      fileName: fileNameStr,
+      storagePath: fileNameStr,
+      publicUrl: map['file_url'] as String? ?? '',
+      fileType: extension,
+      fileSize: 0,
+      uploadedBy: map['user_id'] as String?,
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
           : DateTime.now(),
@@ -42,13 +42,9 @@ class UploadedFileModel {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'title': title,
+      'user_id': uploadedBy,
+      'file_url': publicUrl,
       'file_name': fileName,
-      'storage_path': storagePath,
-      'public_url': publicUrl,
-      'file_type': fileType,
-      'file_size': fileSize,
-      'uploaded_by': uploadedBy,
       'created_at': createdAt.toIso8601String(),
     };
   }

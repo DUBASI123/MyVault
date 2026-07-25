@@ -12,37 +12,13 @@ var NotificationService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationService = void 0;
 const common_1 = require("@nestjs/common");
-const admin = require("firebase-admin");
 let NotificationService = NotificationService_1 = class NotificationService {
     constructor() {
         this.logger = new common_1.Logger(NotificationService_1.name);
-        try {
-            if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-                const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-                this.firebaseApp = admin.initializeApp({
-                    credential: admin.credential.cert(serviceAccount),
-                });
-                this.logger.log('Firebase Admin SDK initialized successfully');
-            }
-        }
-        catch (e) {
-            this.logger.warn(`Firebase Admin SDK init skipped: ${e.message}`);
-        }
+        this.logger.log('Mock NotificationService initialized (Firebase disabled)');
     }
     async sendPushNotification(token, title, body, deepLink) {
-        if (!this.firebaseApp)
-            return;
-        try {
-            await admin.messaging().send({
-                token,
-                notification: { title, body },
-                data: deepLink ? { deep_link: deepLink } : {},
-            });
-            this.logger.log(`Pushed notification to token: ${token.substring(0, 10)}...`);
-        }
-        catch (err) {
-            this.logger.error(`FCM Push Error: ${err.message}`);
-        }
+        this.logger.log(`Mock FCM Push (Firebase disabled): ${title} - ${body}`);
     }
 };
 exports.NotificationService = NotificationService;

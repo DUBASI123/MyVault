@@ -9,50 +9,19 @@ var RedisService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RedisService = void 0;
 const common_1 = require("@nestjs/common");
-const ioredis_1 = require("ioredis");
 let RedisService = RedisService_1 = class RedisService {
     constructor() {
         this.logger = new common_1.Logger(RedisService_1.name);
     }
     onModuleInit() {
-        const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-        this.client = new ioredis_1.default(redisUrl, {
-            lazyConnect: true,
-            maxRetriesPerRequest: 3,
-        });
-        this.client.on('connect', () => this.logger.log('Redis client connected'));
-        this.client.on('error', (err) => this.logger.warn(`Redis connection error: ${err.message}`));
+        this.logger.log('Mock Redis client initialized');
     }
-    async onModuleDestroy() {
-        if (this.client) {
-            await this.client.quit();
-        }
-    }
+    async onModuleDestroy() { }
     async get(key) {
-        try {
-            return await this.client.get(key);
-        }
-        catch (_) {
-            return null;
-        }
+        return null;
     }
-    async set(key, value, ttlSeconds) {
-        try {
-            if (ttlSeconds) {
-                await this.client.set(key, value, 'EX', ttlSeconds);
-            }
-            else {
-                await this.client.set(key, value);
-            }
-        }
-        catch (_) { }
-    }
-    async del(key) {
-        try {
-            await this.client.del(key);
-        }
-        catch (_) { }
-    }
+    async set(key, value, ttlSeconds) { }
+    async del(key) { }
 };
 exports.RedisService = RedisService;
 exports.RedisService = RedisService = RedisService_1 = __decorate([

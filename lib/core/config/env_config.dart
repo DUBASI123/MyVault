@@ -2,23 +2,15 @@
 class EnvConfig {
   static const supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://oawomrlsitttrbulxgyk.supabase.co',
+    defaultValue: 'https://roaxygqyuemlpxygvzyq.supabase.co',
   );
 
   static const supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hd29tcmxzaXR0dHJidWx4Z3lrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NDk3NzQsImV4cCI6MjA5NzQyNTc3NH0.j3rs7JlIZiRXxsw67GVLbQsKGpOUP_758PuIbGnYzig',
+    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvYXh5Z3F5dWVtbHB4eWd2enlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5NzU2ODEsImV4cCI6MjEwMDU1MTY4MX0.61PhYJFw-NX480PzvhKg0wak1p1Ov7-6jBQiiSF5xho',
   );
 
-  static const cloudinaryCloudName = String.fromEnvironment(
-    'CLOUDINARY_CLOUD_NAME',
-    defaultValue: 'dtdb4irno',
-  );
 
-  static const cloudinaryUploadPreset = String.fromEnvironment(
-    'CLOUDINARY_UPLOAD_PRESET',
-    defaultValue: 'myvault_unsigned',
-  );
 
   /// Live mode — no mock login/demo data (default: on).
   static const isLiveMode = bool.fromEnvironment(

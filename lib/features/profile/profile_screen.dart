@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../../core/router/app_router.dart';
-import '../../core/services/cloudinary_service.dart';
 import '../../shared/widgets/app_scaffold.dart';
 import '../../shared/widgets/college_logo_header.dart';
 import '../../shared/widgets/custom_button.dart';
@@ -27,11 +26,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     try {
       final student = ref.read(currentStudentProvider);
       if (student == null) return;
-      final url = await CloudinaryService.uploadProfileImage(student.id);
-      if (url != null && mounted) {
-        // Refresh student profile from Supabase to get new pic URL
-        await ref.read(currentStudentProvider.notifier).load();
-        _snack('Profile photo updated');
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) {
+        _snack('Profile photo updated (Mock)');
       }
     } catch (e) {
       _snack('Upload failed: $e', error: true);

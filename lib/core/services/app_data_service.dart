@@ -98,6 +98,3 @@ class AppDataService {
     return [];
   }
 }
-
-  }
-}

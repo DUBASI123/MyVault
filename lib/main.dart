@@ -9,10 +9,8 @@ import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Supabase.initialize(
     url: Env.supabaseUrl,
-    // ignore: deprecated_member_use
     anonKey: Env.supabaseAnonKey,
   );
 

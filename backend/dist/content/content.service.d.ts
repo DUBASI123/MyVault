@@ -6,39 +6,37 @@ export declare class ContentService {
     constructor(prisma: PrismaService, redis: RedisService);
     getTicker(): Promise<any>;
     getNotifications(): Promise<{
-        type: string;
-        title: string;
         id: string;
+        title: string;
+        message: string;
+        type: string;
         createdAt: Date;
-        link: string | null;
-        body: string;
     }[]>;
     getResults(branch?: string, semester?: number): Promise<{
-        subject: string;
-        branch: string;
-        semester: number;
         id: string;
-        createdAt: Date;
-        code: string | null;
+        subject: string;
+        code: string;
         internal: number;
         external: number;
         total: number;
-        maxMarks: number;
-        grade: string | null;
+        max: number;
+        grade: string;
         status: string;
+        branch: string;
+        semester: number;
+        createdAt: Date;
     }[]>;
     getInternships(type?: string): Promise<{
-        type: string;
         id: string;
-        role: string;
-        createdAt: Date;
-        status: string;
         company: string;
-        domain: string | null;
-        stipend: string | null;
-        duration: string | null;
-        deadline: string | null;
-        applyLink: string | null;
-        logo: string | null;
+        role: string;
+        type: string;
+        domain: string;
+        stipend: string;
+        duration: string;
+        deadline: string;
+        applyLink: string;
+        status: string;
+        createdAt: Date;
     }[]>;
 }

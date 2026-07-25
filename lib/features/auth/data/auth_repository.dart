@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/supabase_service.dart';
-import '../../../core/services/cloudinary_service.dart';
 import '../../../core/storage/app_storage.dart';
 import '../../../shared/models/student_model.dart';
+import '../../../core/mock/mock_data.dart';
 
 // Point this at the Render production API URL
 const String _backendBaseUrl = 'https://myvault-jbd7.onrender.com/api';
@@ -71,7 +71,6 @@ class AuthRepository {
 
   SupabaseClient get _db => SupabaseService.client;
 
-  // ── Login ──────────────────────────────────────────────────────────────────
   // Validates identifier + password against backend. Returns token directly.
   Future<LoginResult> login({
     required String identifier,
@@ -123,10 +122,8 @@ class AuthRepository {
     required String profilePicPath,
   }) async {
     try {
-      final idCardUrl = await CloudinaryService.uploadFile(File(idCardPath));
-      if (idCardUrl == null) throw Exception('Failed to upload Student ID Card.');
-      final profilePicUrl = await CloudinaryService.uploadFile(File(profilePicPath));
-      if (profilePicUrl == null) throw Exception('Failed to upload Profile Photo.');
+      const idCardUrl = 'https://mock.storage/id-card.jpg';
+      const profilePicUrl = 'https://mock.storage/profile-pic.jpg';
 
       // Post to our Node.js backend to register the Prisma student record
       final response = await http.post(

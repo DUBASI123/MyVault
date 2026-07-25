@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/uploaded_file_model.dart';
 
 class UploadedFilesService {
-  static const String bucketName = 'uploads';
+  static const String bucketName = 'website-uploads';
   static final SupabaseClient _client = Supabase.instance.client;
 
   /// Allowed extensions: PDF, Images (JPG, JPEG, PNG), DOC/DOCX, XLS/XLSX
@@ -21,12 +21,11 @@ class UploadedFilesService {
 
   static const int maxFileSizeBytes = 50 * 1024 * 1024; // 50MB
 
-  /// Fetch all files from uploaded_files table
+  /// Fetch all files from files table
   static Future<List<UploadedFileModel>> fetchUploadedFiles() async {
     final response = await _client
-        .from('uploaded_files')
+        .from('files')
         .select()
-        .eq('active', true)
         .order('created_at', ascending: false);
 
     return (response as List)
@@ -34,7 +33,7 @@ class UploadedFilesService {
         .toList();
   }
 
-  /// Upload file to bucket 'uploads' and insert record into 'uploaded_files' table
+  /// Upload file to bucket 'website-uploads' and insert record into 'files' table
   static Future<UploadedFileModel> uploadFile({
     required File file,
     required String title,
@@ -58,7 +57,10 @@ class UploadedFilesService {
 
     // 2. Storage path & upload
     final cleanName = file.path.split(Platform.pathSeparator).last.replaceAll(RegExp(r'[^a-zA-Z0-9.-]'), '_');
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}_$cleanName';
+    final user = _client.auth.currentUser;
+    if (user == null) throw Exception("Please login first");
+
+    final fileName = '${user.id}/${DateTime.now().millisecondsSinceEpoch}_$cleanName';
     final storagePath = fileName;
 
     await _client.storage.from(bucketName).upload(
@@ -76,18 +78,12 @@ class UploadedFilesService {
     final publicUrl = _client.storage.from(bucketName).getPublicUrl(storagePath);
 
     // 4. Save metadata to database
-    final user = _client.auth.currentUser;
     final inserted = await _client
-        .from('uploaded_files')
+        .from('files')
         .insert({
-          'title': title.trim().isEmpty ? cleanName : title.trim(),
+          'user_id': user.id,
           'file_name': cleanName,
-          'storage_path': storagePath,
-          'public_url': publicUrl,
-          'file_type': extension,
-          'file_size': fileSize,
-          'uploaded_by': user?.id ?? 'student',
-          'active': true,
+          'file_url': publicUrl,
         })
         .select()
         .single();
@@ -97,19 +93,23 @@ class UploadedFilesService {
     return UploadedFileModel.fromMap(inserted);
   }
 
-  /// Delete file from bucket 'uploads' and record from 'uploaded_files' table
+  /// Delete file from bucket 'website-uploads' and record from 'files' table
   static Future<void> deleteFile(UploadedFileModel item) async {
     // 1. Remove from Storage
     if (item.storagePath.isNotEmpty) {
       try {
-        await _client.storage.from(bucketName).remove([item.storagePath]);
+        final user = _client.auth.currentUser;
+        if (user != null) {
+          final fullPath = item.storagePath.contains('/') ? item.storagePath : '${user.id}/${item.storagePath}';
+          await _client.storage.from(bucketName).remove([fullPath]);
+        }
       } catch (e) {
         debugPrint('Storage deletion warning: $e');
       }
     }
 
     // 2. Remove record from database
-    await _client.from('uploaded_files').delete().eq('id', item.id);
+    await _client.from('files').delete().eq('id', item.id);
   }
 
   static String _mimeType(String ext) {
