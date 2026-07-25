@@ -7,9 +7,10 @@ import '../../../core/services/supabase_service.dart';
 import '../../../core/storage/app_storage.dart';
 import '../../../shared/models/student_model.dart';
 import '../../../core/mock/mock_data.dart';
+import '../../../core/config/env.dart';
 
 // Point this at the Render production API URL
-const String _backendBaseUrl = Env.backendUrl;
+String get _backendBaseUrl => Env.backendUrl;
 
 // ─── Login Result ─────────────────────────────────────────────────────────────
 sealed class LoginResult {}

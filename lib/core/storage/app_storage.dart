@@ -49,4 +49,14 @@ class AppStorage {
     await prefs.remove(AppConstants.collegeLogoKey);
     await prefs.setBool(AppConstants.loggedInKey, false);
   }
+
+  Future<void> saveCustomBackendUrl(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('custom_backend_url', url);
+  }
+
+  Future<String?> getCustomBackendUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('custom_backend_url');
+  }
 }

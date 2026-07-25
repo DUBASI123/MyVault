@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/env.dart';
 import 'core/services/crash_reporting_service.dart';
 import 'core/services/offline_sync_service.dart';
+import 'core/storage/app_storage.dart';
 import 'app.dart';
 
 void main() async {
@@ -13,6 +14,11 @@ void main() async {
     url: Env.supabaseUrl,
     anonKey: Env.supabaseAnonKey,
   );
+
+  final customUrl = await AppStorage.instance.getCustomBackendUrl();
+  if (customUrl != null && customUrl.isNotEmpty) {
+    Env.customUrl = customUrl;
+  }
 
   await OfflineSyncService.instance.init();
   await CrashReportingService.instance.init();

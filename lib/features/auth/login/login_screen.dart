@@ -8,6 +8,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../data/auth_repository.dart';
+import '../../../core/config/env.dart';
+import '../../../core/storage/app_storage.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -54,6 +56,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       Iterable.generate(6, (_) => chars.codeUnitAt(random.nextInt(chars.length))),
     );
     setState(() {});
+  }
+
+  void _showUrlSettingsDialog() {
+    final controller = TextEditingController(text: Env.backendUrl);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Developer Settings', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Configure Backend URL:',
+              style: TextStyle(fontSize: 12, color: Colors.grey, fontFamily: 'Poppins'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                hintText: 'Enter API URL (e.g. https://my-server.onrender.com/api)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              style: const TextStyle(fontSize: 13, fontFamily: 'Poppins'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newUrl = controller.text.trim();
+              if (newUrl.isNotEmpty) {
+                await AppStorage.instance.saveCustomBackendUrl(newUrl);
+                Env.customUrl = newUrl;
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Backend URL set to: $newUrl')),
+                  );
+                }
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -203,7 +256,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.lock_open_rounded, color: Colors.white, size: 42),
+                      child: GestureDetector(
+                        onLongPress: _showUrlSettingsDialog,
+                        child: const Icon(Icons.lock_open_rounded, color: Colors.white, size: 42),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     const Text(

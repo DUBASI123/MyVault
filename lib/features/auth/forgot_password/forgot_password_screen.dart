@@ -25,7 +25,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   bool _obscureNew = true;
   bool _obscureConfirm = true;
 
-  static const _backendBaseUrl = Env.backendUrl;
+  static final _backendBaseUrl = Env.backendUrl;
 
   @override
   void dispose() {
