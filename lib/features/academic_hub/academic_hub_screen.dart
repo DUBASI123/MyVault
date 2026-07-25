@@ -81,7 +81,14 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
   Future<void> _loadSubjects() async {
     final student = ref.read(currentStudentProvider);
     final semester = ref.read(academicSemesterProvider);
-    if (student == null) return;
+    if (student == null) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
+      return;
+    }
 
     if (_loadedBranch == student.branch && _loadedSemester == semester) return;
 

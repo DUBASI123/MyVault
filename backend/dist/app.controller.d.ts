@@ -3,7 +3,7 @@ import { StorageService } from './storage/storage.service';
 export declare class AppController {
     private readonly storageService;
     constructor(storageService: StorageService);
-    downloadApk(res: Response): Promise<void>;
+    downloadApk(res: Response): Promise<void | Response<any, Record<string, any>>>;
     getRoot(): {
         status: string;
         app: string;

@@ -16,18 +16,18 @@ exports.AppController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const storage_service_1 = require("./storage/storage.service");
+const path = require("path");
+const fs = require("fs");
 let AppController = class AppController {
     constructor(storageService) {
         this.storageService = storageService;
     }
     async downloadApk(res) {
-        try {
-            const signedUrl = await this.storageService.getPresignedDownloadUrl('downloads/MyVault-release.apk', 'MyVault-release.apk');
-            return res.redirect(signedUrl);
+        const apkPath = path.join(__dirname, '..', 'public', 'MyVault-release.apk');
+        if (fs.existsSync(apkPath)) {
+            return res.download(apkPath, 'MyVault.apk');
         }
-        catch (err) {
-            return res.redirect('https://myvault-files.s3.eu-north-1.amazonaws.com/downloads/MyVault-release.apk');
-        }
+        return res.status(404).send('APK file not found on server');
     }
     getRoot() {
         return {

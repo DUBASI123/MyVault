@@ -7,6 +7,7 @@ import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../../core/config/env.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -24,7 +25,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   bool _obscureNew = true;
   bool _obscureConfirm = true;
 
-  static const _backendBaseUrl = 'https://myvault-jbd7.onrender.com/api';
+  static const _backendBaseUrl = Env.backendUrl;
 
   @override
   void dispose() {
