@@ -27,7 +27,7 @@ class AcademicService {
       final response = await SupabaseService.client
           .from('subjects')
           .select()
-          .ilike('branch', '%$branch%')
+          .or('branch.ilike.%$branch%,branch.ieq.general')
           .eq('semester', semester)
           .eq('subject_type', subjectType)
           .order('name');
