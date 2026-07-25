@@ -2,6 +2,8 @@ import { Controller, Get, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { StorageService } from './storage/storage.service';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @ApiTags('System')
 @Controller()
@@ -11,19 +13,11 @@ export class AppController {
   @Get('download-apk')
   @ApiOperation({ summary: 'Download latest MyVault release APK' })
   async downloadApk(@Res() res: Response) {
-    try {
-      // Generate AWS S3 signed URL (valid for 1 hr) to bypass AccessDenied restrictions
-      const signedUrl = await this.storageService.getPresignedDownloadUrl(
-        'downloads/MyVault-release.apk',
-        'MyVault-release.apk',
-      );
-      return res.redirect(signedUrl);
-    } catch (err) {
-      // Fallback mirror URL
-      return res.redirect(
-        'https://myvault-files.s3.eu-north-1.amazonaws.com/downloads/MyVault-release.apk',
-      );
+    const apkPath = path.join(__dirname, '..', 'public', 'MyVault-release.apk');
+    if (fs.existsSync(apkPath)) {
+      return res.download(apkPath, 'MyVault.apk');
     }
+    return res.status(404).send('APK file not found on server');
   }
 
   @Get()
