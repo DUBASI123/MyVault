@@ -90,10 +90,16 @@ class AuthRepository {
         body: body,
       );
 
-      final data = jsonDecode(response.body);
       if (response.statusCode != 200) {
-        throw Exception(data['error'] ?? 'Login failed');
+        try {
+          final data = jsonDecode(response.body);
+          throw Exception(data['error'] ?? 'Login failed');
+        } catch (_) {
+          throw Exception('Server returned error ${response.statusCode}. Please check your Backend URL in Developer Settings.');
+        }
       }
+
+      final data = jsonDecode(response.body);
 
       if (data['token'] != null) {
         await _persistSession(data);
@@ -152,11 +158,16 @@ class AuthRepository {
         }),
       );
 
-      final data = jsonDecode(response.body);
       if (response.statusCode != 201) {
-        throw Exception(data['error'] ?? 'Registration failed');
+        try {
+          final data = jsonDecode(response.body);
+          throw Exception(data['error'] ?? 'Registration failed');
+        } catch (_) {
+          throw Exception('Server returned error ${response.statusCode}. Please check your Backend URL in Developer Settings.');
+        }
       }
 
+      final data = jsonDecode(response.body);
       _ref.read(currentStudentProvider.notifier).clear();
     } catch (e) {
       throw Exception(e.toString().replaceFirst('Exception: ', ''));
