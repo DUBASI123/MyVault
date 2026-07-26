@@ -59,14 +59,8 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
         }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading results: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+      debugPrint('Error loading exam_results: $e');
+      _results = [];
     } finally {
       if (mounted) setState(() => _loading = false);
     }

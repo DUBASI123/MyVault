@@ -9,8 +9,17 @@ import '../../../shared/models/student_model.dart';
 import '../../../core/mock/mock_data.dart';
 import '../../../core/config/env.dart';
 
-// Point this at the Render production API URL
-String get _backendBaseUrl => Env.backendUrl;
+// Point this at the Render production API URL (automatically ensures /api suffix)
+String get _backendBaseUrl {
+  var url = Env.backendUrl.trim();
+  while (url.endsWith('/')) {
+    url = url.substring(0, url.length - 1);
+  }
+  if (!url.endsWith('/api')) {
+    url = '$url/api';
+  }
+  return url;
+}
 
 // ─── Login Result ─────────────────────────────────────────────────────────────
 sealed class LoginResult {}
