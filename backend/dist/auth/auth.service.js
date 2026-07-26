@@ -41,8 +41,15 @@ let AuthService = class AuthService {
         const payload = { sub: student.id, role: student.role };
         const accessToken = this.jwtService.sign(payload);
         const refreshToken = this.jwtService.sign(payload, { expiresIn: '30d' });
+        const supabaseToken = this.jwtService.sign({
+            sub: student.id,
+            role: 'authenticated',
+            aud: 'authenticated',
+        }, { expiresIn: '7d' });
         return {
             token: accessToken,
+            accessToken,
+            supabaseToken,
             refreshToken,
             student: this.sanitizeStudent(student),
         };

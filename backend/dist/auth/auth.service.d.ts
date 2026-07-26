@@ -9,6 +9,8 @@ export declare class AuthService {
     constructor(prisma: PrismaService, jwtService: JwtService);
     login(dto: LoginDto): Promise<{
         token: string;
+        accessToken: string;
+        supabaseToken: string;
         refreshToken: string;
         student: any;
     }>;
