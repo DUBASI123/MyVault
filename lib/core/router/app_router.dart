@@ -5,7 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../storage/app_storage.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/auth/login/login_screen.dart';
-import '../../features/auth/register/register_screen.dart';
+import '../../features/auth/presentation/registration_screen.dart';
 import '../../features/auth/forgot_password/forgot_password_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/academic_hub/academic_hub_screen.dart';
@@ -88,7 +88,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: AppRoutes.splash, builder: (context, state) => const SplashScreen()),
       GoRoute(path: AppRoutes.login, builder: (context, state) => const LoginScreen()),
-      GoRoute(path: AppRoutes.register, builder: (context, state) => const RegisterScreen()),
+      GoRoute(path: AppRoutes.register, builder: (context, state) => const RegistrationScreen()),
       GoRoute(path: AppRoutes.forgotPassword, builder: (context, state) => const ForgotPasswordScreen()),
       GoRoute(path: AppRoutes.home, builder: (context, state) => const HomeScreen()),
       GoRoute(path: AppRoutes.academicHub, builder: (context, state) => const AcademicHubScreen()),
