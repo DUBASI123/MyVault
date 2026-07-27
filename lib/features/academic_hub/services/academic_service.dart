@@ -38,20 +38,20 @@ class AcademicService {
       debugPrint('Supabase getSubjects error: $e');
     }
 
-    // Fetch custom subjects & materials uploaded from CMS website (cms_study_materials & uploaded_files)
+    // Fetch study materials uploaded from CMS website (public.academic_contents)
     try {
       final cmsRes = await SupabaseService.client
-          .from('cms_study_materials')
+          .from('academic_contents')
           .select()
-          .eq('active', true)
           .order('created_at', ascending: false);
 
       final cmsList = (cmsRes as List).map((e) {
-        final name = (e['name'] as String? ?? e['title'] as String? ?? e['subject_name'] as String? ?? 'Custom Subject').trim();
+        final title = (e['title'] as String? ?? e['subject_name'] as String? ?? 'Custom Study Material').trim();
+        final contentId = e['subject_id']?.toString() ?? e['id']?.toString() ?? 'content_${DateTime.now().millisecondsSinceEpoch}';
         return SubjectModel(
-          id: e['id']?.toString() ?? 'cms_${DateTime.now().millisecondsSinceEpoch}',
-          name: name,
-          code: (e['section_tab'] as String? ?? 'NOTES').toUpperCase(),
+          id: contentId,
+          name: title,
+          code: (e['content_type'] as String? ?? 'NOTES').toUpperCase(),
           branch: branch,
           semester: semester,
           subjectType: subjectType,
@@ -62,13 +62,13 @@ class AcademicService {
         final existingNames = subjects.map((s) => s.name.toLowerCase()).toSet();
         for (final cmsSub in cmsList) {
           if (!existingNames.contains(cmsSub.name.toLowerCase())) {
-            subjects.insert(0, cmsSub); // Display website-uploaded subject at top!
+            subjects.insert(0, cmsSub); // Display CMS uploaded study materials at the top!
             existingNames.add(cmsSub.name.toLowerCase());
           }
         }
       }
     } catch (e) {
-      debugPrint('cms_study_materials query error: $e');
+      debugPrint('academic_contents query error: $e');
     }
 
     // GUARANTEED NATIVE FALLBACK LIST if database query returns empty
@@ -134,20 +134,24 @@ class AcademicService {
     String contentType = 'all',
   }) async {
     try {
-      var query = SupabaseService.client
+      final response = await SupabaseService.client
           .from('academic_contents')
           .select()
-          .eq('subject_id', subjectId);
-      if (contentType != 'all') {
-        query = query.eq('content_type', contentType);
-      }
-      final response = await query.order('created_at', ascending: false);
-      return (response as List)
+          .order('created_at', ascending: false);
+
+      final list = (response as List)
           .map((e) => AcademicContentModel.fromMap(e as Map<String, dynamic>))
           .toList();
+
+      if (list.isNotEmpty) {
+        final filtered = list.where((c) => c.subjectId == subjectId || c.id == subjectId).toList();
+        return filtered.isNotEmpty ? filtered : list;
+      }
+
+      return [];
     } catch (e) {
       debugPrint('Supabase getContentsBySubject error: $e');
-      rethrow;
+      return [];
     }
   }
 
