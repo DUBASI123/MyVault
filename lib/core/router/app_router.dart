@@ -16,7 +16,7 @@ import 'package:myvault_app/features/auth/presentation/login_screen.dart';
 import 'package:myvault_app/features/auth/presentation/registration_screen.dart';
 import 'package:myvault_app/features/auth/presentation/developer_settings_screen.dart';
 
-final goRouterProvider = Provider<GoRouter>((ref) {
+final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authControllerProvider);
 
   return GoRouter(
