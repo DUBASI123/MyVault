@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import 'package:http/http.dart' as http;
@@ -61,7 +60,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     await Future.delayed(const Duration(seconds: 1));
     if (mounted) {
       _snack('Password reset successful! Please login.');
-      context.go(AppRoutes.login);
+      context.go('/login');
       setState(() => _isLoading = false);
     }
   }
@@ -119,7 +118,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             const SizedBox(height: 16),
             Center(
               child: TextButton(
-                onPressed: () => context.go(AppRoutes.login),
+                onPressed: () => context.go('/login'),
                 child: const Text(
                   'Back to Login',
                   style: TextStyle(color: Color(0xFF4F46E5)),

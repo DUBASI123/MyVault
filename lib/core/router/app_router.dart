@@ -1,161 +1,82 @@
+// lib/core/router/app_router.dart
+//
+// GoRouter setup for the auth flow. Redirect logic reads authControllerProvider:
+//  - while it's loading  -> stay on /splash
+//  - signed out on a protected route -> /login
+//  - signed in and on an auth route (/splash, /login, /register) -> /home
+//
+// Replace HomeScreenStub with your real home screen route.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../storage/app_storage.dart';
-import '../../features/splash/splash_screen.dart';
-import '../../features/auth/login/login_screen.dart';
-import '../../features/auth/presentation/registration_screen.dart';
-import '../../features/auth/forgot_password/forgot_password_screen.dart';
-import '../../features/home/home_screen.dart';
-import '../../features/academic_hub/academic_hub_screen.dart';
-import '../../features/academic_hub/subject_detail_screen.dart';
-import '../../features/results/results_screen.dart';
-import '../../features/internships/internships_screen.dart';
-import '../../features/internships/internship_detail_screen.dart';
-import '../../features/internships/internships_placements_module.dart';
-import '../../features/internships/screens/certificate_view_screen.dart';
-import '../../features/projects/projects_screen.dart';
-import '../../features/projects/project_detail_screen.dart';
-import '../../features/projects/upload_project_screen.dart';
-import '../../features/competitive_exams/competitive_exams_screen.dart';
-import '../../features/notifications/notifications_screen.dart';
-import '../../features/certificates/certificates_screen.dart';
-import '../../features/profile/profile_screen.dart';
-import '../../features/settings/settings_screen.dart';
-import '../../features/documents_hub/documents_hub_screen.dart';
-import '../../features/internships/screens/placement_desk_screen.dart';
-import '../../features/study_planner/study_planner_screen.dart';
-import '../../features/govt_jobs/govt_jobs_screen.dart';
-import '../../features/resume_builder/screens/resume_builder_screen.dart';
-import '../../features/documents_hub/uploaded_files_screen.dart';
+import 'package:myvault_app/features/auth/application/auth_providers.dart';
+import 'package:myvault_app/features/auth/presentation/splash_screen.dart';
+import 'package:myvault_app/features/auth/presentation/login_screen.dart';
+import 'package:myvault_app/features/auth/presentation/registration_screen.dart';
+import 'package:myvault_app/features/auth/presentation/developer_settings_screen.dart';
 
-class AppRoutes {
-  static const splash = '/';
-  static const login = '/login';
-  static const register = '/register';
-  static const forgotPassword = '/forgot-password';
-  static const home = '/home';
-  static const academicHub = '/academic-hub';
-  static const subjectDetail = '/academic-hub/subject-detail';
-  static const results = '/results';
-  static const internships = '/internships';
-  static const internshipDetail = '/internships/detail';
-  static const courseDetail = '/internships/course-detail';
-  static const courseTest = '/internships/course-test';
-  static const certificateView = '/internships/certificate';
-  static const projects = '/projects';
-  static const projectDetail = '/projects/detail';
-  static const uploadProject = '/projects/upload';
-  static const competitiveExams = '/competitive-exams';
-  static const notifications = '/notifications';
-  static const certificates = '/certificates';
-  static const profile = '/profile';
-  static const settings = '/settings';
-  static const documentsHub = '/documents-hub';
-  static const uploadedFiles = '/uploaded-files';
-  static const placementDesk = '/placement-desk';
-  static const studyPlanner = '/study-planner';
-  static const govtJobs = '/govt-jobs';
-  static const resumeBuilder = '/resume-builder';
-}
+final goRouterProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authControllerProvider);
 
-final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: AppRoutes.splash,
-    redirect: (context, state) async {
-      final token = await AppStorage.instance.getToken();
-      final isLoggedIn = token != null;
-      final location = state.matchedLocation;
+    initialLocation: '/splash',
+    refreshListenable: _AuthRefreshNotifier(ref),
+    redirect: (context, state) {
+      final loggedIn = authState.value != null;
+      final isLoading = authState.isLoading;
+      final loc = state.matchedLocation;
 
-      final isAuthRoute = location == AppRoutes.login ||
-          location == AppRoutes.register ||
-          location == AppRoutes.forgotPassword ||
-          location == AppRoutes.splash;
+      final onAuthRoute = loc == '/splash' || loc == '/login' || loc == '/register';
 
-      // Not logged in → force to login for protected routes
-      if (!isLoggedIn && !isAuthRoute) {
-        return AppRoutes.login;
-      }
-
-      // Logged in but on auth/splash pages → go to home dashboard directly
-      if (isLoggedIn && (location == AppRoutes.login || location == AppRoutes.register || location == AppRoutes.splash)) {
-        return AppRoutes.home;
-      }
-
+      if (isLoading) return loc == '/splash' ? null : '/splash';
+      if (!loggedIn && !onAuthRoute) return '/login';
+      if (loggedIn && onAuthRoute) return '/home';
       return null;
     },
     routes: [
-      GoRoute(path: AppRoutes.splash, builder: (context, state) => const SplashScreen()),
-      GoRoute(path: AppRoutes.login, builder: (context, state) => const LoginScreen()),
-      GoRoute(path: AppRoutes.register, builder: (context, state) => const RegistrationScreen()),
-      GoRoute(path: AppRoutes.forgotPassword, builder: (context, state) => const ForgotPasswordScreen()),
-      GoRoute(path: AppRoutes.home, builder: (context, state) => const HomeScreen()),
-      GoRoute(path: AppRoutes.academicHub, builder: (context, state) => const AcademicHubScreen()),
-      GoRoute(
-        path: AppRoutes.subjectDetail,
-        builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>;
-          return SubjectDetailScreen(
-            subjectId: extra['subjectId'] as String,
-            categoryName: extra['categoryName'] as String,
-            dbTypes: List<String>.from(extra['dbTypes'] as List),
-          );
-        },
-      ),
-      GoRoute(path: AppRoutes.results, builder: (context, state) => const ResultsScreen()),
-      GoRoute(path: AppRoutes.internships, builder: (context, state) => const InternshipsScreen()),
-      GoRoute(
-        path: AppRoutes.internshipDetail,
-        builder: (context, state) {
-          final internshipId = state.extra as String;
-          return InternshipDetailScreen(internshipId: internshipId);
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.courseDetail,
-        builder: (context, state) {
-          final courseId = state.extra as String;
-          return CourseDetailScreen(courseId: courseId);
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.courseTest,
-        builder: (context, state) {
-          final courseId = state.extra as String;
-          return CourseTestScreen(courseId: courseId);
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.certificateView,
-        builder: (context, state) {
-          final courseId = state.extra as String;
-          return CertificateViewScreen(courseId: courseId);
-        },
-      ),
-      GoRoute(path: AppRoutes.projects, builder: (context, state) => const ProjectsScreen()),
-      GoRoute(
-        path: AppRoutes.projectDetail,
-        builder: (context, state) {
-          final projectId = state.extra as String;
-          return ProjectDetailScreen(projectId: projectId);
-        },
-      ),
-      GoRoute(path: AppRoutes.uploadProject, builder: (context, state) => const UploadProjectScreen()),
-      GoRoute(path: AppRoutes.competitiveExams, builder: (context, state) => const CompetitiveExamsScreen()),
-      GoRoute(path: AppRoutes.notifications, builder: (context, state) => const NotificationsScreen()),
-      GoRoute(path: AppRoutes.certificates, builder: (context, state) => const CertificatesScreen()),
-      GoRoute(path: AppRoutes.profile, builder: (context, state) => const ProfileScreen()),
-      GoRoute(path: AppRoutes.settings, builder: (context, state) => const SettingsScreen()),
-      GoRoute(path: AppRoutes.documentsHub, builder: (context, state) => const DocumentsHubScreen()),
-      GoRoute(path: AppRoutes.uploadedFiles, builder: (context, state) => const UploadedFilesScreen()),
-      GoRoute(path: AppRoutes.placementDesk, builder: (context, state) => const PlacementDeskScreen()),
-      GoRoute(path: AppRoutes.studyPlanner,  builder: (context, state) => const StudyPlannerScreen()),
-      GoRoute(path: AppRoutes.govtJobs, builder: (context, state) => const GovtJobsScreen()),
-      GoRoute(path: AppRoutes.resumeBuilder, builder: (context, state) => const ResumeBuilderScreen()),
+      GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (_, __) => const RegistrationScreen()),
+      GoRoute(path: '/dev-settings', builder: (_, __) => const DeveloperSettingsScreen()),
+      GoRoute(path: '/home', builder: (_, __) => const HomeScreenStub()),
     ],
-    errorBuilder: (_, state) => Scaffold(
-      body: Center(child: Text('Page not found: ${state.error}')),
-    ),
   );
 });
+
+/// Bridges Riverpod state changes into something GoRouter's
+/// `refreshListenable` can listen to, so redirect() re-runs on auth changes.
+class _AuthRefreshNotifier extends ChangeNotifier {
+  _AuthRefreshNotifier(Ref ref) {
+    ref.listen(authControllerProvider, (_, __) => notifyListeners());
+  }
+}
+
+/// Placeholder — swap for your real home/dashboard screen.
+class HomeScreenStub extends ConsumerWidget {
+  const HomeScreenStub({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final student = ref.watch(authControllerProvider).value;
+    return Scaffold(
+      backgroundColor: const Color(0xFF07080D),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        title: const Text('Home', style: TextStyle(color: Colors.white)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () => ref.read(authControllerProvider.notifier).logout(),
+          ),
+        ],
+      ),
+      body: Center(
+        child: Text(
+          student != null ? 'Welcome, ${student.fullName}' : 'Welcome',
+          style: const TextStyle(color: Colors.white, fontSize: 18),
+        ),
+      ),
+    );
+  }
+}

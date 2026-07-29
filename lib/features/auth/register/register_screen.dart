@@ -15,6 +15,7 @@ import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/auth_repository.dart';
+import '../application/auth_providers.dart';
 
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -191,16 +192,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         createdAt: DateTime.now(),
       );
 
-      await ref.read(authRepositoryProvider).register(
-        student,
-        _password.text,
-        idCardPath: _studentIdPath!,
-        profilePicPath: _profilePhotoPath!,
-      );
+      // Use new AuthController to register through the unified auth module
+      await ref.read(authControllerProvider.notifier).register({
+        'fullName': student.fullName,
+        'hallTicketNumber': student.hallTicket,
+        'password': _password.text,
+        'email': student.email,
+        'phone': student.mobile,
+        'university': student.collegeName,
+        'courseType': 'btech',
+        'semester': student.semester,
+      });
 
       if (!mounted) return;
       setState(() => _isLoading = false);
-      context.go(AppRoutes.login);
+      context.go('/login');
       _snack('Registration completed successfully! Please log in.');
     } catch (e) {
       if (!mounted) return;

@@ -5,9 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/router/app_router.dart';
+import '../application/auth_providers.dart';
 import '../../../core/widgets/custom_button.dart';
-import '../data/auth_repository.dart';
 import '../../../core/config/env.dart';
 import '../../../core/storage/app_storage.dart';
 
@@ -155,16 +154,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     });
 
     try {
-      final result = await ref.read(authRepositoryProvider).login(
-            identifier: _identifierController.text.trim(),
+      await ref.read(authControllerProvider.notifier).login(
+            hallTicketNumber: _identifierController.text.trim().toUpperCase(),
             password: _passwordController.text.trim(),
           );
 
       if (!mounted) return;
-
-      if (result is LoginSuccess) {
-        context.go(AppRoutes.home);
-      } else {
+      final authState = ref.read(authControllerProvider);
+      if (authState.hasValue && authState.value != null) {
+        context.go('/home');
+      } else if (authState.hasError) {
         _snack('Unexpected login result. Please try again.', error: true);
       }
     } catch (e) {
@@ -437,12 +436,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 TextButton(
-                  onPressed: () => context.push(AppRoutes.forgotPassword),
+                  onPressed: () => context.push('/forgot-password'),
                   child: const Text('Forgot Password?',
                       style: TextStyle(fontFamily: 'Poppins', color: Color(0xFF4F46E5))),
                 ),
                 TextButton(
-                  onPressed: () => context.push(AppRoutes.register),
+                  onPressed: () => context.push('/register'),
                   child: const Text('Register Now →',
                       style: TextStyle(fontFamily: 'Poppins', color: Color(0xFF4F46E5))),
                 ),
