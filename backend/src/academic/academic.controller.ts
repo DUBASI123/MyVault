@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Body, Query, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, Header } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiBody } from '@nestjs/swagger';
-import { IsString, IsOptional, IsInt, Min, Max } from 'class-validator';
+import { IsString, IsOptional, IsInt } from 'class-validator';
 import { AcademicService } from './academic.service';
 
 export class CreateContentDto {
@@ -19,6 +19,7 @@ export class AcademicController {
   constructor(private readonly academicService: AcademicService) {}
 
   @Get('subjects')
+  @Header('Cache-Control', 'public, max-age=300, s-maxage=600')
   @ApiOperation({ summary: 'Get subjects by branch and semester' })
   @ApiQuery({ name: 'branch', required: true, example: 'ECE' })
   @ApiQuery({ name: 'semester', required: true, example: 1 })
@@ -32,6 +33,7 @@ export class AcademicController {
   }
 
   @Get('subjects/:id/contents')
+  @Header('Cache-Control', 'public, max-age=300, s-maxage=600')
   @ApiOperation({ summary: 'Get all contents for a subject' })
   @ApiQuery({ name: 'type', required: false, description: 'Filter by content type' })
   async getSubjectContents(

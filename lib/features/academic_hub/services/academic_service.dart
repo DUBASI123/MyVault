@@ -31,7 +31,7 @@ class AcademicService {
     // 1. Try NestJS Backend (AWS RDS Database)
     try {
       final uri = Uri.parse('$_backendUrl/api/academic/subjects?branch=${Uri.encodeComponent(branch)}&semester=$semester&type=$subjectType');
-      final res = await http.get(uri).timeout(const Duration(seconds: 8));
+      final res = await http.get(uri).timeout(const Duration(seconds: 2));
       if (res.statusCode == 200) {
         final list = jsonDecode(res.body) as List;
         subjects = list.map((e) => SubjectModel.fromMap(e as Map<String, dynamic>)).toList();
@@ -156,7 +156,7 @@ class AcademicService {
     // 1. Try NestJS Backend (AWS S3 & RDS)
     try {
       final uri = Uri.parse('$_backendUrl/api/academic/subjects/$subjectId/contents?type=$contentType');
-      final res = await http.get(uri).timeout(const Duration(seconds: 8));
+      final res = await http.get(uri).timeout(const Duration(seconds: 2));
       if (res.statusCode == 200) {
         final list = jsonDecode(res.body) as List;
         return list.map((e) => AcademicContentModel.fromMap(e as Map<String, dynamic>)).toList();
