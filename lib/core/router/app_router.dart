@@ -2,10 +2,8 @@
 //
 // GoRouter setup for the auth flow. Redirect logic reads authControllerProvider:
 //  - while it's loading  -> stay on /splash
-//  - signed out on a protected route -> /login
-//  - signed in and on an auth route (/splash, /login, /register) -> /home
-//
-// Replace HomeScreenStub with your real home screen route.
+//  - signed out -> redirect to /login if on splash or protected route
+//  - signed in  -> redirect to /home if on an auth route (/splash, /login, /register)
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,11 +25,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isLoading = authState.isLoading;
       final loc = state.matchedLocation;
 
-      final onAuthRoute = loc == '/splash' || loc == '/login' || loc == '/register';
+      // 1. Stay on splash while loading session state
+      if (isLoading) {
+        return loc == '/splash' ? null : '/splash';
+      }
 
-      if (isLoading) return loc == '/splash' ? null : '/splash';
-      if (!loggedIn && !onAuthRoute) return '/login';
-      if (loggedIn && onAuthRoute) return '/home';
+      // 2. If NOT logged in, route to /login if currently on splash or any protected route
+      if (!loggedIn) {
+        if (loc == '/login' || loc == '/register' || loc == '/dev-settings') {
+          return null;
+        }
+        return '/login';
+      }
+
+      // 3. If LOGGED IN, redirect away from auth routes to /home
+      if (loggedIn) {
+        final onAuthRoute = loc == '/splash' || loc == '/login' || loc == '/register';
+        if (onAuthRoute) {
+          return '/home';
+        }
+        return null;
+      }
+
       return null;
     },
     routes: [
