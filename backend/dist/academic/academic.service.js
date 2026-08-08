@@ -21,9 +21,8 @@ let AcademicService = class AcademicService {
     async getSubjects(branch, semester, subjectType = 'academic') {
         const cacheKey = `subjects:${branch}:${semester}:${subjectType}`;
         const cached = await this.redis.get(cacheKey);
-        if (cached) {
+        if (cached)
             return JSON.parse(cached);
-        }
         const data = await this.prisma.subject.findMany({
             where: {
                 branch: String(branch),
@@ -39,10 +38,28 @@ let AcademicService = class AcademicService {
         return this.prisma.academicContent.findMany({
             where: {
                 subjectId,
-                ...(contentType && contentType !== 'all' ? { contentType: String(contentType) } : {}),
+                ...(contentType && contentType !== 'all' ? { contentType } : {}),
             },
             orderBy: { createdAt: 'desc' },
         });
+    }
+    async createContent(dto) {
+        const content = await this.prisma.academicContent.create({
+            data: {
+                subjectId: dto.subjectId,
+                title: dto.title,
+                contentType: dto.contentType,
+                unitNumber: dto.unitNumber ?? null,
+                fileUrl: dto.fileUrl ?? null,
+                storagePath: dto.storagePath ?? null,
+                description: dto.description ?? null,
+            },
+        });
+        const subject = await this.prisma.subject.findUnique({ where: { id: dto.subjectId } });
+        if (subject) {
+            await this.redis.del(`subjects:${subject.branch}:${subject.semester}:${subject.subjectType}`);
+        }
+        return content;
     }
 };
 exports.AcademicService = AcademicService;

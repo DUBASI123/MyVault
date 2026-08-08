@@ -3,18 +3,19 @@ export declare class MasterController {
     private readonly masterService;
     constructor(masterService: MasterService);
     getUniversities(): Promise<{
-        id: string;
         name: string;
+        id: string;
+        createdAt: Date;
         code: string;
         state: string;
-        createdAt: Date;
     }[]>;
     getColleges(universityId?: string): Promise<{
+        name: string;
+        type: string;
         id: string;
         universityId: string;
-        name: string;
+        createdAt: Date;
         code: string;
-        district: string;
-        type: string;
+        district: string | null;
     }[]>;
 }

@@ -6,13 +6,33 @@ export declare class AcademicService {
     constructor(prisma: PrismaService, redis: RedisService);
     getSubjects(branch: string, semester: number, subjectType?: string): Promise<any>;
     getSubjectContents(subjectId: string, contentType?: string): Promise<{
+        fileUrl: string | null;
+        description: string | null;
+        title: string;
         id: string;
-        subjectId: any;
+        createdAt: Date;
+        subjectId: string;
+        contentType: string;
+        unitNumber: number | null;
+        storagePath: string | null;
+    }[]>;
+    createContent(dto: {
+        subjectId: string;
         title: string;
         contentType: string;
-        description: string;
-        unitNumber: number;
-        fileUrl: string;
+        unitNumber?: number;
+        fileUrl?: string;
+        storagePath?: string;
+        description?: string;
+    }): Promise<{
+        fileUrl: string | null;
+        description: string | null;
+        title: string;
+        id: string;
         createdAt: Date;
-    }[]>;
+        subjectId: string;
+        contentType: string;
+        unitNumber: number | null;
+        storagePath: string | null;
+    }>;
 }

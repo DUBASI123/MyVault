@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1100,15 +1100,17 @@ function showToast(msg, duration = 2500) {
 }
 
 // â”€â”€ TAG SELECT â”€â”€
+// ── TAG SELECT ────────────────────────────────────────────────────────────
 function selectTag(el) {
   document.querySelectorAll('#tag-group .tag').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
 }
 
-// â”€â”€ SUPABASE CONFIG â”€â”€
-const SUPABASE_URL = 'https://roaxygqyuemlpxygvzyq.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvYXh5Z3F5dWVtbHB4eWd2enlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUzMzYyMjAsImV4cCI6MjA2MDkxMjIyMH0.fjSzaJCVYkDtkLBt8Nq0CxSFSPbxZqhHjnBR-_AvpkY';
-const STORAGE_BUCKET = 'study-materials';
+// ── AWS / BACKEND CONFIG ──────────────────────────────────────────────────
+// Points to the NestJS backend on Render (same origin when served from it)
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:5000'
+  : 'https://myvault-backend.onrender.com';
 
 let selectedFile = null;
 

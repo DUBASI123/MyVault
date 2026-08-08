@@ -3,14 +3,14 @@ import { StorageService } from './storage.service';
 export declare class StorageController {
     private readonly storageService;
     constructor(storageService: StorageService);
-    getDownloadUrl(path: string, fileName?: string): Promise<{
+    getDownloadUrl(key: string, fileName?: string): Promise<{
         url: string;
     }>;
-    getViewUrl(path: string): Promise<{
+    getViewUrl(key: string): Promise<{
         url: string;
     }>;
-    redirectUrl(path: string, res: Response): Promise<void>;
-    getPresignedUploadUrl(fileName: string, contentType: string): Promise<{
+    redirect(key: string, res: Response): Promise<void>;
+    getPresignedUploadUrl(fileName: string, contentType: string, folder?: string): Promise<{
         uploadUrl: string;
         fileUrl: string;
     }>;
@@ -18,7 +18,12 @@ export declare class StorageController {
         originalname: string;
         mimetype: string;
         buffer: Buffer;
-    }): Promise<{
+    }, folder?: string): Promise<{
         fileUrl: string;
+        key: string;
+    }>;
+    deleteObject(key: string): Promise<{
+        deleted: boolean;
+        key: string;
     }>;
 }

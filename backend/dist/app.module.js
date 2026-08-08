@@ -8,6 +8,8 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
+const path_1 = require("path");
+const serve_static_1 = require("@nestjs/serve-static");
 const config_1 = require("@nestjs/config");
 const app_controller_1 = require("./app.controller");
 const prisma_module_1 = require("./prisma/prisma.module");
@@ -28,6 +30,10 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             config_1.ConfigModule.forRoot({ isGlobal: true }),
+            serve_static_1.ServeStaticModule.forRoot({
+                rootPath: (0, path_1.join)(__dirname, '..', '..', 'public'),
+                exclude: ['/api/(.*)', '/api/docs'],
+            }),
             prisma_module_1.PrismaModule,
             redis_module_1.RedisModule,
             auth_module_1.AuthModule,

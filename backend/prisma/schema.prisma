@@ -1,0 +1,142 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model University {
+  id        String    @id @default(uuid())
+  name      String
+  code      String    @unique
+  state     String    @default("Telangana")
+  createdAt DateTime  @default(now()) @map("created_at")
+  colleges  College[]
+  students  Student[]
+
+  @@map("universities")
+}
+
+model College {
+  id           String     @id @default(uuid())
+  universityId String     @map("university_id")
+  name         String
+  code         String     @unique
+  district     String?
+  type         String     @default("Private") // Government | Private | Autonomous
+  createdAt    DateTime   @default(now()) @map("created_at")
+  university   University @relation(fields: [universityId], references: [id])
+  students     Student[]
+
+  @@map("colleges")
+}
+
+model Student {
+  id              String    @id @default(uuid())
+  firstName       String    @map("first_name")
+  lastName        String    @map("last_name")
+  fullNameAadhar  String?   @map("full_name_aadhar")
+  mobile          String    @unique
+  email           String?   @unique
+  passwordHash    String    @map("password_hash")
+  hallTicket      String    @unique @map("hall_ticket")
+  universityId    String?   @map("university_id")
+  collegeId       String?   @map("college_id")
+  course          String    @default("B.Tech") // B.Tech | Degree
+  branch          String
+  semester        Int       @default(1)
+  role            String    @default("student") // student | admin | faculty
+  fcmToken        String?   @map("fcm_token")
+  profilePicUrl   String?   @map("profile_pic_url")
+  idCardUrl       String?   @map("id_card_url")
+  isMobileVerified Boolean   @default(true) @map("is_mobile_verified")
+  isEmailVerified  Boolean   @default(true) @map("is_email_verified")
+  verificationStatus String  @default("Approved") @map("verification_status")
+  isVerified       Boolean   @default(true) @map("is_verified")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  university      University? @relation(fields: [universityId], references: [id])
+  college         College?    @relation(fields: [collegeId], references: [id])
+
+  @@map("students")
+}
+
+model Subject {
+  id           String           @id @default(uuid())
+  name         String
+  code         String?
+  branch       String
+  semester     Int
+  subjectType  String           @default("academic") @map("subject_type") // academic | lab | elective
+  createdAt    DateTime         @default(now()) @map("created_at")
+  contents     AcademicContent[]
+
+  @@unique([code, branch, semester])
+  @@map("subjects")
+}
+
+model AcademicContent {
+  id          String   @id @default(uuid())
+  subjectId   String   @map("subject_id")
+  title       String
+  contentType String   @map("content_type") // notes | video | lab-manual | cheat-sheet | assignment | previous-paper | textbook
+  description String?
+  unitNumber  Int?     @map("unit_number")
+  fileUrl     String?  @map("file_url")   // Public S3 URL
+  storagePath String?  @map("storage_path") // S3 key
+  createdAt   DateTime @default(now()) @map("created_at")
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@map("academic_contents")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      String   @default("general") // general | exam_timetable | govt_job | placement | notice
+  branch    String?
+  semester  Int?
+  imageUrl  String?  @map("image_url")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("notifications")
+}
+
+model ExamResult {
+  id        String   @id @default(uuid())
+  subject   String
+  code      String?
+  internal  Int      @default(0)
+  external  Int      @default(0)
+  total     Int      @default(0)
+  max       Int      @default(100)
+  grade     String?
+  status    String   @default("Pass")
+  branch    String
+  semester  Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("exam_results")
+}
+
+model Internship {
+  id        String   @id @default(uuid())
+  company   String
+  role      String
+  type      String   @default("IT")
+  domain    String?
+  stipend   String?
+  duration  String?
+  deadline  String?
+  applyLink String?  @map("apply_link")
+  status    String   @default("Open")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("internships")
+}

@@ -8,30 +8,29 @@ export declare class JwtStrategy extends JwtStrategy_base {
         sub: string;
         role: string;
     }): Promise<{
-        id: any;
+        mobile: string;
         firstName: string;
         lastName: string;
-        fullNameAadhar: string;
-        mobile: string;
-        email: string;
-        passwordHash: string;
+        fullNameAadhar: string | null;
+        email: string | null;
         hallTicket: string;
-        universityId: string;
-        collegeId: string;
-        course: string;
         branch: string;
+        course: string;
         semester: number;
+        profilePicUrl: string | null;
+        idCardUrl: string | null;
+        id: string;
+        passwordHash: string;
+        universityId: string | null;
+        collegeId: string | null;
         role: string;
-        university: {
-            id: string;
-            name: string;
-            code: string;
-        };
-        college: {
-            id: string;
-            name: string;
-            code: string;
-        };
+        fcmToken: string | null;
+        isMobileVerified: boolean;
+        isEmailVerified: boolean;
+        verificationStatus: string;
+        isVerified: boolean;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
 }
 export {};
