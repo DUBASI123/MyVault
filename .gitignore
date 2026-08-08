@@ -33,6 +33,11 @@ migrate_working_dir/
 /android/app/profile
 /android/app/release
 
+# Frontend Next.js build artifacts
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
 # Exclude backend dist and release APK binaries from git push
 backend/dist/
 backend/public/MyVault-release.apk
