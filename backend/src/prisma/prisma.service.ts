@@ -21,13 +21,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       await this.$connect();
       this.logger.log('✅ Connected to AWS RDS PostgreSQL');
     } catch (err) {
-      this.logger.error('❌ Failed to connect to AWS RDS:', err.message);
-      throw err;
+      this.logger.warn(`⚠️ AWS RDS PostgreSQL connection pending or failed: ${err.message}`);
+      this.logger.warn('Server will continue running. Update DATABASE_URL in Render dashboard when RDS is ready.');
     }
   }
 
   async onModuleDestroy() {
-    await this.$disconnect();
-    this.logger.log('🔌 Disconnected from AWS RDS');
+    try {
+      await this.$disconnect();
+      this.logger.log('🔌 Disconnected from AWS RDS');
+    } catch (_) {}
   }
 }

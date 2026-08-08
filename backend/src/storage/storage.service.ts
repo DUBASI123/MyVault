@@ -21,15 +21,19 @@ export class StorageService {
     this.region = this.config.get<string>('AWS_REGION') || 'ap-south-1';
     this.bucket = this.config.get<string>('AWS_BUCKET_NAME') || 'myvault-study-materials';
 
-    this.s3 = new S3Client({
-      region: this.region,
-      credentials: {
-        accessKeyId: this.config.get<string>('AWS_ACCESS_KEY_ID') || '',
-        secretAccessKey: this.config.get<string>('AWS_SECRET_ACCESS_KEY') || '',
-      },
-    });
-
-    this.logger.log(`✅ S3 client initialised — bucket: ${this.bucket} | region: ${this.region}`);
+    try {
+      this.s3 = new S3Client({
+        region: this.region,
+        credentials: {
+          accessKeyId: this.config.get<string>('AWS_ACCESS_KEY_ID') || 'dummy',
+          secretAccessKey: this.config.get<string>('AWS_SECRET_ACCESS_KEY') || 'dummy',
+        },
+      });
+      this.logger.log(`✅ S3 client initialised — bucket: ${this.bucket} | region: ${this.region}`);
+    } catch (err) {
+      this.logger.warn(`⚠️ S3 client init warning: ${err.message}`);
+      this.s3 = new S3Client({ region: this.region });
+    }
   }
 
   // ── PUBLIC URL (for publicly readable buckets) ──────────────────────────
