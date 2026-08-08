@@ -1,0 +1,32 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "MyVaultS3FullAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:GetBucketCors",
+        "s3:PutBucketCors",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": [
+        "arn:aws:s3:::myvault-study-materials",
+        "arn:aws:s3:::myvault-study-materials/*"
+      ]
+    },
+    {
+      "Sid": "MyVaultRDSConnectAccess",
+      "Effect": "Allow",
+      "Action": [
+        "rds-db:connect"
+      ],
+      "Resource": [
+        "arn:aws:rds-db:ap-south-1:*:dbuser/*/*"
+      ]
+    }
+  ]
+}

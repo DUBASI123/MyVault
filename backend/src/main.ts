@@ -7,7 +7,13 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
-  app.enableCors({ origin: '*' });
+  // Enable CORS with full method support for web & mobile presigned URL uploads
+  app.enableCors({
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'x-upsert', 'range'],
+    exposedHeaders: ['Content-Length', 'Content-Range', 'ETag'],
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
