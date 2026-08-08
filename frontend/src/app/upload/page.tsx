@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Upload, CloudUpload, FileCheck, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
-const API_BASE = 'https://myvault-backend.onrender.com';
+const API_BASE = 'https://myvault-f08x.onrender.com';
 
 interface Subject {
   id: string;

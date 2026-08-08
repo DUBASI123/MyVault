@@ -12,7 +12,7 @@ import 'package:dio/dio.dart';
 import 'secure_storage_service.dart';
 
 /// Update this if your Render deployment URL changes.
-const String kDefaultBackendUrl = 'https://myvault-backend.onrender.com';
+const String kDefaultBackendUrl = 'https://myvault-f08x.onrender.com';
 
 class DioClient {
   DioClient({required SecureStorageService storage}) : _storage = storage {

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { User, Lock, Mail, Phone, GraduationCap, Building, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 
-const API_BASE = 'https://myvault-backend.onrender.com';
+const API_BASE = 'https://myvault-f08x.onrender.com';
 
 export default function RegisterPage() {
   const [courseType, setCourseType] = useState<'btech' | 'degree'>('btech');

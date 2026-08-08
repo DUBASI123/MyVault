@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { BookOpen, FileText, Video, FlaskConical, Download, Search, Sparkles } from 'lucide-react';
 
-const API_BASE = 'https://myvault-backend.onrender.com';
+const API_BASE = 'https://myvault-f08x.onrender.com';
 
 interface Subject {
   id: string;
