@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { join } from 'path';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
@@ -16,6 +18,10 @@ import { EmailService } from './services/email.service';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', '..', 'public'),
+      exclude: ['/api/(.*)', '/api/docs'],
+    }),
     PrismaModule,
     RedisModule,
     AuthModule,
