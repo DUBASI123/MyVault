@@ -18,6 +18,19 @@ function getPublicFolderPath(): string {
   return path.join(process.cwd(), 'public');
 }
 
+function getApkFilePath(): string | null {
+  const candidates = [
+    path.join(process.cwd(), 'public', 'MyVault-release.apk'),
+    path.join(process.cwd(), 'backend', 'public', 'MyVault-release.apk'),
+    path.join(__dirname, '..', 'public', 'MyVault-release.apk'),
+    path.join(__dirname, '..', '..', 'public', 'MyVault-release.apk'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return null;
+}
+
 @ApiTags('System')
 @Controller()
 export class AppController {
@@ -26,15 +39,14 @@ export class AppController {
   @Get('download-apk')
   @ApiOperation({ summary: 'Download latest MyVault release APK' })
   async downloadApk(@Res() res: Response) {
-    const publicDir = getPublicFolderPath();
-    const apkPath = path.join(publicDir, 'MyVault-release.apk');
+    const apkPath = getApkFilePath();
 
-    // 1. If local APK exists on server disk, stream directly
-    if (fs.existsSync(apkPath)) {
+    // 1. If APK file exists on server disk, stream directly
+    if (apkPath) {
       return res.download(apkPath, 'MyVault.apk');
     }
 
-    // 2. Fallback: Redirect to AWS S3 bucket storage URL
+    // 2. Fallback to S3 only if S3 is configured
     try {
       const s3Url = await this.storageService.getPresignedDownloadUrl(
         'downloads/MyVault-release.apk',
