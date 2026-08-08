@@ -1100,23 +1100,140 @@ function selectTag(el) {
   el.classList.add('active');
 }
 
-// ── UPLOAD HANDLER ──
-function handleUpload() {
-  const title = document.getElementById('f-title').value.trim();
+// ── SUPABASE CONFIG ──
+const SUPABASE_URL = 'https://roaxygqyuemlpxygvzyq.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvYXh5Z3F5dWVtbHB4eWd2enlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUzMzYyMjAsImV4cCI6MjA2MDkxMjIyMH0.fjSzaJCVYkDtkLBt8Nq0CxSFSPbxZqhHjnBR-_AvpkY';
+const STORAGE_BUCKET = 'study-materials';
+
+let selectedFile = null;
+
+// ── FILE DROP ZONE WIRING ──
+const dz = document.querySelector('.upload-dropzone');
+const fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = '.pdf,.mp4,.mov,.docx,.doc,.pptx,.png,.jpg,.jpeg,.zip';
+fileInput.style.display = 'none';
+document.body.appendChild(fileInput);
+
+dz.addEventListener('click', () => fileInput.click());
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor = 'var(--blue)'; dz.style.background = 'rgba(62,123,255,0.1)'; });
+dz.addEventListener('dragleave', () => { dz.style.borderColor = ''; dz.style.background = ''; });
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.style.borderColor = ''; dz.style.background = '';
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+function setFile(file) {
+  selectedFile = file;
+  const preview = document.querySelector('.panel-file-preview');
+  preview.querySelector('.fn').textContent = file.name;
+  preview.querySelector('.fs').textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB · ${file.type || 'file'} · Ready to upload`;
+  preview.querySelector('.progress-fill').style.width = '0%';
+  dz.querySelector('.dz-title').textContent = '✅ ' + file.name;
+  dz.querySelector('.dz-sub').textContent = 'File selected — fill in the details below and click Upload';
+  showToast('📎 ' + file.name + ' selected');
+}
+
+// ── REAL UPLOAD HANDLER ──
+async function handleUpload() {
+  const title   = document.getElementById('f-title').value.trim();
   const subject = document.getElementById('f-subject').value.trim();
-  if (!title) { showToast('⚠️ Please enter a title'); return; }
+  const branch  = document.getElementById('f-branch').value;
+  const sem     = document.getElementById('f-sem').value;
+  const unit    = document.getElementById('f-unit').value;
+  const desc    = document.getElementById('f-desc').value.trim();
+  const activeTag = document.querySelector('#tag-group .tag.active');
+  const contentType = activeTag ? activeTag.textContent.replace(/[^\w\s]/g,'').trim().toLowerCase().replace(/\s+/g,'-') : 'notes';
+
+  if (!title)   { showToast('⚠️ Please enter a title'); return; }
   if (!subject) { showToast('⚠️ Please enter a subject'); return; }
+  if (!selectedFile) { showToast('⚠️ Please select a file first'); return; }
+
   const btn = document.querySelector('.submit-btn');
   btn.disabled = true;
-  btn.textContent = '⏳  Uploading...';
-  setTimeout(() => {
-    btn.disabled = false;
-    btn.textContent = '⬆️  Upload to MyVault';
-    showToast('✅ Uploaded successfully! Live in the app.', 3000);
+  btn.textContent = '⏳  Uploading file…';
+
+  try {
+    // 1. Upload file to Supabase Storage
+    const fileName = `${Date.now()}-${selectedFile.name.replace(/\s+/g,'-')}`;
+    const storageRes = await fetch(
+      `${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${fileName}`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': selectedFile.type || 'application/octet-stream',
+          'x-upsert': 'true',
+        },
+        body: selectedFile,
+      }
+    );
+
+    if (!storageRes.ok) {
+      const err = await storageRes.json().catch(() => ({}));
+      throw new Error(err.message || 'File upload failed');
+    }
+
+    btn.textContent = '⏳  Saving to database…';
+    // Animate progress bar
+    document.querySelector('.progress-fill').style.transition = 'width 0.8s';
+    document.querySelector('.progress-fill').style.width = '60%';
+
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${fileName}`;
+
+    // 2. Insert row into academic_contents
+    const semNum = parseInt(sem.replace('Semester ', '')) || 1;
+    const insertRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/academic_contents`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          title,
+          subject_name: subject,
+          branch,
+          semester: semNum,
+          unit_number: unit.replace('Unit ', ''),
+          content_type: contentType,
+          file_url: publicUrl,
+          description: desc || null,
+        }),
+      }
+    );
+
+    if (!insertRes.ok) {
+      const err = await insertRes.json().catch(() => ({}));
+      throw new Error(err.message || 'Database insert failed');
+    }
+
+    document.querySelector('.progress-fill').style.width = '100%';
+
+    // Reset form
+    selectedFile = null;
     document.getElementById('f-title').value = '';
     document.getElementById('f-subject').value = '';
     document.getElementById('f-desc').value = '';
-  }, 1800);
+    fileInput.value = '';
+    dz.querySelector('.dz-title').textContent = 'Drag & Drop or Click to Browse';
+    dz.querySelector('.dz-sub').textContent = 'Supports PDF, MP4, DOCX, images up to 100MB';
+    document.querySelector('.panel-file-preview .fn').textContent = 'No file selected';
+    document.querySelector('.panel-file-preview .fs').textContent = 'Choose a file above';
+
+    showToast('✅ Uploaded! Live in MyVault app now.', 4000);
+  } catch (err) {
+    console.error(err);
+    showToast('❌ ' + (err.message || 'Upload failed. Try again.'), 4000);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⬆️  Upload to MyVault';
+  }
 }
 
 // ── NAV SCROLL ──
