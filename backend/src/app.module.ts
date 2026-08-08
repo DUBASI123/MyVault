@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { join } from 'path';
+import { existsSync } from 'fs';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
@@ -15,11 +16,24 @@ import { PaymentsModule } from './payments/payments.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { EmailService } from './services/email.service';
 
+function resolvePublicPath(): string {
+  const candidates = [
+    join(process.cwd(), 'public'),
+    join(process.cwd(), 'backend', 'public'),
+    join(__dirname, '..', 'public'),
+    join(__dirname, '..', '..', 'public'),
+  ];
+  for (const c of candidates) {
+    if (existsSync(c)) return c;
+  }
+  return join(process.cwd(), 'public');
+}
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', '..', 'public'),
+      rootPath: resolvePublicPath(),
       exclude: ['/api/(.*)', '/api/docs'],
     }),
     PrismaModule,
