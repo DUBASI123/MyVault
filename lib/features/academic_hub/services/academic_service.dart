@@ -1,10 +1,13 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/services/supabase_service.dart';
+import '../../auth/data/services/dio_client.dart';
 import '../models/academic_content_model.dart';
 import '../models/subject_model.dart';
 
@@ -16,6 +19,7 @@ class AcademicService {
   AcademicService._();
 
   static const String bucketName = 'academic-files';
+  static const String _backendUrl = kDefaultBackendUrl;
 
   static Future<List<SubjectModel>> getSubjects({
     required String branch,
@@ -23,22 +27,38 @@ class AcademicService {
     String subjectType = 'academic',
   }) async {
     List<SubjectModel> subjects = [];
+
+    // 1. Try NestJS Backend (AWS RDS Database)
     try {
-      final response = await SupabaseService.client
-          .from('subjects')
-          .select()
-          .or('branch.ilike.%$branch%,branch.ieq.general')
-          .eq('semester', semester)
-          .eq('subject_type', subjectType)
-          .order('name');
-      subjects = (response as List)
-          .map((e) => SubjectModel.fromMap(e as Map<String, dynamic>))
-          .toList();
+      final uri = Uri.parse('$_backendUrl/api/academic/subjects?branch=${Uri.encodeComponent(branch)}&semester=$semester&type=$subjectType');
+      final res = await http.get(uri).timeout(const Duration(seconds: 8));
+      if (res.statusCode == 200) {
+        final list = jsonDecode(res.body) as List;
+        subjects = list.map((e) => SubjectModel.fromMap(e as Map<String, dynamic>)).toList();
+      }
     } catch (e) {
-      debugPrint('Supabase getSubjects error: $e');
+      debugPrint('NestJS getSubjects error: $e');
     }
 
-    // Fetch study materials uploaded from CMS website (public.academic_contents)
+    // 2. Fallback to Supabase Database
+    if (subjects.isEmpty) {
+      try {
+        final response = await SupabaseService.client
+            .from('subjects')
+            .select()
+            .or('branch.ilike.%$branch%,branch.ieq.general')
+            .eq('semester', semester)
+            .eq('subject_type', subjectType)
+            .order('name');
+        subjects = (response as List)
+            .map((e) => SubjectModel.fromMap(e as Map<String, dynamic>))
+            .toList();
+      } catch (e) {
+        debugPrint('Supabase getSubjects error: $e');
+      }
+    }
+
+    // 3. Include CMS website uploads (public.academic_contents)
     try {
       final cmsRes = await SupabaseService.client
           .from('academic_contents')
@@ -62,7 +82,7 @@ class AcademicService {
         final existingNames = subjects.map((s) => s.name.toLowerCase()).toSet();
         for (final cmsSub in cmsList) {
           if (!existingNames.contains(cmsSub.name.toLowerCase())) {
-            subjects.insert(0, cmsSub); // Display CMS uploaded study materials at the top!
+            subjects.insert(0, cmsSub);
             existingNames.add(cmsSub.name.toLowerCase());
           }
         }
@@ -71,7 +91,7 @@ class AcademicService {
       debugPrint('academic_contents query error: $e');
     }
 
-    // GUARANTEED NATIVE FALLBACK LIST if database query returns empty
+    // 4. GUARANTEED FALLBACK LIST if database is unreachable or empty
     if (subjects.isEmpty) {
       subjects = _getFallbackSubjects(branch: branch, semester: semester, subjectType: subjectType);
     }
@@ -133,6 +153,19 @@ class AcademicService {
     required String subjectId,
     String contentType = 'all',
   }) async {
+    // 1. Try NestJS Backend (AWS S3 & RDS)
+    try {
+      final uri = Uri.parse('$_backendUrl/api/academic/subjects/$subjectId/contents?type=$contentType');
+      final res = await http.get(uri).timeout(const Duration(seconds: 8));
+      if (res.statusCode == 200) {
+        final list = jsonDecode(res.body) as List;
+        return list.map((e) => AcademicContentModel.fromMap(e as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      debugPrint('NestJS getContentsBySubject error: $e');
+    }
+
+    // 2. Fallback to Supabase Database
     try {
       final response = await SupabaseService.client
           .from('academic_contents')
@@ -163,9 +196,51 @@ class AcademicService {
     String? description,
     int? unitNumber,
   }) async {
-    final user = SupabaseService.client.auth.currentUser;
-    if (user == null) throw Exception('Login required');
+    // Try S3 Upload via NestJS Backend
+    try {
+      final fileName = file.path.split('/').last.split('\\').last;
+      final presignUri = Uri.parse('$_backendUrl/api/s3/presign-upload?fileName=${Uri.encodeComponent(fileName)}&contentType=${Uri.encodeComponent(_mimeType(fileName.split('.').last.toLowerCase()))}&folder=study-materials');
+      final presignRes = await http.get(presignUri).timeout(const Duration(seconds: 10));
 
+      if (presignRes.statusCode == 200) {
+        final json = jsonDecode(presignRes.body);
+        final String uploadUrl = json['uploadUrl'];
+        final String fileUrl   = json['fileUrl'];
+        final String key       = json['key'] ?? 'study-materials/$fileName';
+
+        // PUT file directly to S3
+        final bytes = await file.readAsBytes();
+        await http.put(
+          Uri.parse(uploadUrl),
+          headers: {'Content-Type': _mimeType(fileName.split('.').last.toLowerCase())},
+          body: bytes,
+        );
+
+        // Save metadata to NestJS RDS
+        final dbRes = await http.post(
+          Uri.parse('$_backendUrl/api/academic/contents'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'subjectId': subjectId,
+            'title': title,
+            'contentType': contentType,
+            'unitNumber': unitNumber,
+            'fileUrl': fileUrl,
+            'storagePath': key,
+            'description': description,
+          }),
+        );
+
+        if (dbRes.statusCode == 201 || dbRes.statusCode == 200) {
+          return AcademicContentModel.fromMap(jsonDecode(dbRes.body));
+        }
+      }
+    } catch (e) {
+      debugPrint('NestJS S3 upload error: $e');
+    }
+
+    // Fallback to Supabase upload
+    final user = SupabaseService.client.auth.currentUser;
     final extension = file.path.split('.').last.toLowerCase();
     final fileName = '${DateTime.now().millisecondsSinceEpoch}.$extension';
     final storagePath = '$subjectId/$contentType/$fileName';
@@ -193,7 +268,7 @@ class AcademicService {
           'unit_number': unitNumber,
           'file_url': publicUrl,
           'storage_path': storagePath,
-          'uploaded_by': user.id,
+          'uploaded_by': user?.id,
         })
         .select()
         .single();
@@ -219,15 +294,20 @@ class AcademicService {
   static Future<void> deleteContent(AcademicContentModel content) async {
     if (content.storagePath != null) {
       try {
+        await http.delete(Uri.parse('$_backendUrl/api/s3/object/${content.storagePath}'));
+      } catch (_) {}
+      try {
         await SupabaseService.client.storage
             .from(bucketName)
             .remove([content.storagePath!]);
       } catch (_) {}
     }
-    await SupabaseService.client
-        .from('academic_contents')
-        .delete()
-        .eq('id', content.id);
+    try {
+      await SupabaseService.client
+          .from('academic_contents')
+          .delete()
+          .eq('id', content.id);
+    } catch (_) {}
   }
 
   static String _mimeType(String ext) {
