@@ -32,6 +32,18 @@ export class ContentService {
     });
   }
 
+  async createNotification(data: { title: string; message: string; category?: string }) {
+    const notice = await this.prisma.notification.create({
+      data: {
+        title: data.title,
+        message: data.message,
+        category: data.category || 'general',
+      },
+    });
+    await this.redis.del('content:ticker');
+    return notice;
+  }
+
   async getResults(branch?: string, semester?: number) {
     return this.prisma.examResult.findMany({
       where: {
@@ -46,6 +58,17 @@ export class ContentService {
     return this.prisma.internship.findMany({
       where: type ? { type } : undefined,
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createInternship(data: { title: string; company: string; type: string; link?: string }) {
+    return this.prisma.internship.create({
+      data: {
+        title: data.title,
+        company: data.company,
+        type: data.type || 'IT',
+        link: data.link || '',
+      },
     });
   }
 }
