@@ -37,7 +37,7 @@ export class ContentService {
       data: {
         title: data.title,
         message: data.message,
-        category: data.category || 'general',
+        type: data.category || 'general',
       },
     });
     await this.redis.del('content:ticker');
@@ -64,10 +64,10 @@ export class ContentService {
   async createInternship(data: { title: string; company: string; type: string; link?: string }) {
     return this.prisma.internship.create({
       data: {
-        title: data.title,
+        role: data.title,
         company: data.company,
         type: data.type || 'IT',
-        link: data.link || '',
+        applyLink: data.link || '',
       },
     });
   }
