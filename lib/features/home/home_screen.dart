@@ -26,19 +26,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    ref.read(currentStudentProvider.notifier).load();
   }
 
   @override
   Widget build(BuildContext context) {
-    final student = ref.watch(currentStudentProvider);
-
-    // Update college logo watermark
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (student?.collegeLogoUrl != null) {
-        ref.read(collegeLogoProvider.notifier).state = student?.collegeLogoUrl;
-      }
-    });
 
     return AppScaffold(
       showAppBar: false,

@@ -14,6 +14,7 @@ class AppRoutes {
   static const String login = '/login';
   static const String register = '/register';
   static const String home = '/home';
+  static const String academicHub = '/academic-hub';
   static const String notifications = '/notifications';
   static const String subjectDetail = '/subject-detail';
 }
@@ -28,6 +29,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/home',
+        builder: (_, __) => const AcademicHubScreen(),
+      ),
+      GoRoute(
+        path: '/academic-hub',
         builder: (_, __) => const AcademicHubScreen(),
       ),
       GoRoute(
