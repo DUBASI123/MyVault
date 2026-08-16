@@ -68,37 +68,22 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
   }
 
   void _initSemester() {
-    final student = ref.read(currentStudentProvider);
-    if (student != null) {
-      final sem = student.semester;
-      final year = ((sem - 1) ~/ 2) + 1;
-      ref.read(academicYearProvider.notifier).state = year;
-      ref.read(academicSemesterProvider.notifier).state = sem;
-    }
     _loadSubjects();
   }
 
   Future<void> _loadSubjects() async {
-    final student = ref.read(currentStudentProvider);
     final semester = ref.read(academicSemesterProvider);
-    if (student == null) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
-      return;
-    }
+    final branch = 'ECE';
 
-    if (_loadedBranch == student.branch && _loadedSemester == semester) return;
+    if (_loadedBranch == branch && _loadedSemester == semester) return;
 
     setState(() => _loading = true);
     try {
       final results = await Future.wait([
-        AcademicService.getSubjects(branch: student.branch, semester: semester, subjectType: 'academic'),
-        AcademicService.getSubjects(branch: student.branch, semester: semester, subjectType: 'tech_skill'),
-        AcademicService.getSubjects(branch: student.branch, semester: semester, subjectType: 'exam_prep'),
-        AcademicService.getSubjects(branch: student.branch, semester: semester, subjectType: 'comm_skill'),
+        AcademicService.getSubjects(branch: branch, semester: semester, subjectType: 'academic'),
+        AcademicService.getSubjects(branch: branch, semester: semester, subjectType: 'tech_skill'),
+        AcademicService.getSubjects(branch: branch, semester: semester, subjectType: 'exam_prep'),
+        AcademicService.getSubjects(branch: branch, semester: semester, subjectType: 'comm_skill'),
       ]);
 
       if (mounted) {
@@ -108,7 +93,7 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
           _examSubjects = results[2];
           _commSubjects = results[3];
           _loading = false;
-          _loadedBranch = student.branch;
+          _loadedBranch = branch;
           _loadedSemester = semester;
         });
       }
@@ -131,7 +116,6 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
 
   @override
   Widget build(BuildContext context) {
-    final student = ref.watch(currentStudentProvider);
     final selectedYear = ref.watch(academicYearProvider);
     final selectedSemester = ref.watch(academicSemesterProvider);
 
@@ -140,9 +124,9 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
       body: Column(
         children: [
           CollegeLogoHeader(
-            collegeName: student?.collegeName ?? 'Your College',
-            studentName: student?.displayName,
-            onNotificationTap: () => context.push(AppRoutes.notifications),
+            collegeName: 'MyVault Study Portal',
+            studentName: 'Student',
+            onNotificationTap: () {},
           ),
 
           _YearSemesterSelector(
@@ -185,7 +169,7 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _subjectsTab(selectedSemester, student),
+                _subjectsTab(selectedSemester, null),
                 _techTab(),
                 _examPrepTab(),
                 _commTab(),

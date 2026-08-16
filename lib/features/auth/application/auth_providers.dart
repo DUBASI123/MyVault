@@ -73,3 +73,8 @@ class AuthController extends AsyncNotifier<Student?> {
 final authControllerProvider = AsyncNotifierProvider<AuthController, Student?>(
   AuthController.new,
 );
+
+final currentStudentProvider = Provider<Student?>((ref) {
+  return ref.watch(authControllerProvider).value;
+});
+

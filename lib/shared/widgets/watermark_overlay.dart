@@ -16,7 +16,7 @@ class WatermarkOverlay extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final logoUrl = ref.watch(currentStudentProvider)?.collegeLogoUrl;
+    const String? logoUrl = null;
 
     return Stack(
       children: [

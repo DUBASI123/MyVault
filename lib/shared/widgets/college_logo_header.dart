@@ -19,8 +19,7 @@ class CollegeLogoHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final student = ref.watch(currentStudentProvider);
-    final logoUrl = student?.collegeLogoUrl;
+    const String? logoUrl = null;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

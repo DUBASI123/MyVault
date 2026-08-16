@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/subject_model.dart';
 import '../models/academic_content_model.dart';
 import '../../auth/data/services/dio_client.dart';
-import '../../auth/data/services/supabase_service.dart';
+import '../../../core/services/supabase_service.dart';
 
 class AcademicService {
   static const String bucketName = 'academic-files';

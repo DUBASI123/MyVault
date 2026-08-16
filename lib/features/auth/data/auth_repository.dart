@@ -5,6 +5,7 @@
 // POST to /auth/register returns a token immediately, same shape as login.
 
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/student_model.dart';
 import 'services/dio_client.dart';
 import 'services/secure_storage_service.dart';
@@ -70,3 +71,8 @@ class AuthRepository {
     return fallback;
   }
 }
+
+final currentStudentProvider = Provider<Student?>((ref) {
+  return null;
+});
+
