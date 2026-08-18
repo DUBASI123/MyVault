@@ -4,12 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/subject_model.dart';
 import '../models/academic_content_model.dart';
-import '../../auth/data/services/dio_client.dart';
 import '../../../core/services/supabase_service.dart';
 
 class AcademicService {
   static const String bucketName = 'academic-files';
-  static const String _backendUrl = kDefaultBackendUrl;
+  static const String _backendUrl = 'https://myvault-f08x.onrender.com';
 
   /// Fetches subjects prioritizing Supabase Database & CMS Contents
   static Future<List<SubjectModel>> getSubjects({

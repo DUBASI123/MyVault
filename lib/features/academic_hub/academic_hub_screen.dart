@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../../core/router/app_router.dart';
-import '../../features/auth/data/auth_repository.dart';
 import '../../shared/widgets/app_scaffold.dart';
 import '../../shared/widgets/college_logo_header.dart';
 import 'models/subject_model.dart';
@@ -384,11 +383,10 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
   }
 
   Widget _techTab() {
-    final student = ref.watch(currentStudentProvider);
     final selectedSemester = ref.watch(academicSemesterProvider);
     return _buildSubjectsTab(
       semester: selectedSemester,
-      student: student,
+      student: null,
       subjectsList: _techSubjects,
       emptyTitle: 'No tech skills for Semester $selectedSemester',
       emptySubtitle: 'Premium tech skill courses are being curated.\nCheck back soon!',
@@ -398,11 +396,10 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
   }
 
   Widget _examPrepTab() {
-    final student = ref.watch(currentStudentProvider);
     final selectedSemester = ref.watch(academicSemesterProvider);
     return _buildSubjectsTab(
       semester: selectedSemester,
-      student: student,
+      student: null,
       subjectsList: _examSubjects,
       emptyTitle: 'No exam prep materials for Semester $selectedSemester',
       emptySubtitle: 'Quantitative aptitude, logical reasoning, and GATE prep files are being curated.\nCheck back soon!',
@@ -412,11 +409,10 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
   }
 
   Widget _commTab() {
-    final student = ref.watch(currentStudentProvider);
     final selectedSemester = ref.watch(academicSemesterProvider);
     return _buildSubjectsTab(
       semester: selectedSemester,
-      student: student,
+      student: null,
       subjectsList: _commSubjects,
       emptyTitle: 'No comm skills materials for Semester $selectedSemester',
       emptySubtitle: 'Business communication and soft skills resources are being curated.\nCheck back soon!',

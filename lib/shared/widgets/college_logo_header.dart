@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
-import '../../features/auth/data/auth_repository.dart';
 
 class CollegeLogoHeader extends ConsumerWidget {
   final String collegeName;

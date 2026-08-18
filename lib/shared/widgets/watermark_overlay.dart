@@ -1,7 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../features/auth/data/auth_repository.dart';
 
 /// Semi-transparent institute logo watermark (Figma spec: ~0.08 opacity).
 class WatermarkOverlay extends ConsumerWidget {

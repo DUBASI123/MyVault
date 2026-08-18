@@ -6,7 +6,6 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
-import { AuthModule } from './auth/auth.module';
 import { AcademicModule } from './academic/academic.module';
 import { ContentModule } from './content/content.module';
 import { MasterModule } from './master/master.module';
@@ -38,7 +37,6 @@ function resolvePublicPath(): string {
     }),
     PrismaModule,
     RedisModule,
-    AuthModule,
     AcademicModule,
     ContentModule,
     MasterModule,
