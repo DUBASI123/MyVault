@@ -17,7 +17,6 @@ model University {
   state     String    @default("Telangana")
   createdAt DateTime  @default(now()) @map("created_at")
   colleges  College[]
-  students  Student[]
 
   @@map("universities")
 }
@@ -31,39 +30,8 @@ model College {
   type         String     @default("Private") // Government | Private | Autonomous
   createdAt    DateTime   @default(now()) @map("created_at")
   university   University @relation(fields: [universityId], references: [id])
-  students     Student[]
 
   @@map("colleges")
-}
-
-model Student {
-  id              String    @id @default(uuid())
-  firstName       String    @map("first_name")
-  lastName        String    @map("last_name")
-  fullNameAadhar  String?   @map("full_name_aadhar")
-  mobile          String    @unique
-  email           String?   @unique
-  passwordHash    String    @map("password_hash")
-  hallTicket      String    @unique @map("hall_ticket")
-  universityId    String?   @map("university_id")
-  collegeId       String?   @map("college_id")
-  course          String    @default("B.Tech") // B.Tech | Degree
-  branch          String
-  semester        Int       @default(1)
-  role            String    @default("student") // student | admin | faculty
-  fcmToken        String?   @map("fcm_token")
-  profilePicUrl   String?   @map("profile_pic_url")
-  idCardUrl       String?   @map("id_card_url")
-  isMobileVerified Boolean   @default(true) @map("is_mobile_verified")
-  isEmailVerified  Boolean   @default(true) @map("is_email_verified")
-  verificationStatus String  @default("Approved") @map("verification_status")
-  isVerified       Boolean   @default(true) @map("is_verified")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  university      University? @relation(fields: [universityId], references: [id])
-  college         College?    @relation(fields: [collegeId], references: [id])
-
-  @@map("students")
 }
 
 model Subject {
