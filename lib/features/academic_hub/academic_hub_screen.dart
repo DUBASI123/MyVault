@@ -146,6 +146,87 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
             semestersForYear: _semestersForYear,
           ),
 
+          // ─── Main Hubs Dashboard Overview Banner ───
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.15),
+                  AppColors.background,
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Explore Hubs',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Poppins',
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'Sem $selectedSemester',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildHubCard(
+                        title: 'Academic Hub',
+                        subtitle: '${_academicSubjects.length} Subjects',
+                        icon: Icons.menu_book_rounded,
+                        color: AppColors.primary,
+                        onTap: () => _tabController.animateTo(0),
+                      ),
+                      const SizedBox(width: 10),
+                      _buildHubCard(
+                        title: 'Tech Skills Hub',
+                        subtitle: 'Courses & DSA',
+                        icon: Icons.code_rounded,
+                        color: const Color(0xFF6C63FF),
+                        onTap: () => _tabController.animateTo(1),
+                      ),
+                      const SizedBox(width: 10),
+                      _buildHubCard(
+                        title: 'Exam Prep Hub',
+                        subtitle: 'Aptitude & GATE',
+                        icon: Icons.psychology_rounded,
+                        color: AppColors.compExams,
+                        onTap: () => _tabController.animateTo(2),
+                      ),
+                      const SizedBox(width: 10),
+                      _buildHubCard(
+                        title: 'Career & Placement Hub',
+                        subtitle: 'Jobs & Drives',
+                        icon: Icons.work_outline_rounded,
+                        color: AppColors.notifications,
+                        onTap: () => _tabController.animateTo(3),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           Material(
             color: AppColors.surface,
             child: TabBar(
@@ -156,10 +237,10 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
               indicatorColor: AppColors.primary,
               indicatorWeight: 2.5,
               tabs: const [
-                Tab(text: 'Subjects'),
+                Tab(text: 'Academic Subjects'),
                 Tab(text: 'Tech Skills'),
                 Tab(text: 'Exam Prep'),
-                Tab(text: 'Comm Skills'),
+                Tab(text: 'Comm & Career'),
               ],
             ),
           ),
@@ -418,6 +499,64 @@ class _AcademicHubScreenState extends ConsumerState<AcademicHubScreen>
       emptySubtitle: 'Business communication and soft skills resources are being curated.\nCheck back soon!',
       emptyIcon: Icons.record_voice_over_outlined,
       colorTheme: AppColors.notifications,
+    );
+  }
+
+  Widget _buildHubCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 20, color: color),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Poppins',
+                    color: color,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
